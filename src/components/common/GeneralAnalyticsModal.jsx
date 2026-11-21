@@ -352,6 +352,15 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
                 </div>
               </div>
 
+              {/* Status and count indicator */}
+              <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold px-1">
+                <span>عرض {filteredStudents.length} من أصل {analytics.totalStudents} طالباً في مجتمع MathVerse 5</span>
+                <span className="text-emerald-500 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  مجتمع تعليمي نشط
+                </span>
+              </div>
+
               {/* Students Table (عمود عرض سجل المشاهدات الفردي ملغي لحماية الخصوصية) */}
               <div className="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
                 <div className="overflow-x-auto">

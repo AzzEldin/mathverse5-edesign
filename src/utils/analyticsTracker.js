@@ -3,6 +3,8 @@
  * مدير التتبع والإحصائيات وتحليل سجل استخدام الطلاب لمنصة MathVerse 5
  */
 
+import { MOCK_STUDENTS_100 } from '../data/mockStudents.js';
+
 const STUDENTS_REGISTRY_KEY = 'mathverse_students_registry';
 const WEBHOOK_URL_KEY = 'mathverse_analytics_webhook_url';
 
@@ -19,133 +21,43 @@ export function calculateDaysBetween(startDate, endDate = new Date()) {
 }
 
 /**
- * بيانات تجريبية افتراضية لعرض لوحة التحكم بشكل ثري وفوري
+ * بيانات العينات التوضيحية (100 طالب في مراحل متفاوتة - معظمها في البدايات)
  */
-const DEFAULT_DEMO_STUDENTS = [
-  {
-    id: 'demo-std-1',
-    name: 'محمود عز الدين',
-    school: 'مدرسة المنال الابتدائية',
-    avatar: '🚀',
-    registeredAt: '2026-11-15T09:30:00.000Z',
-    lastActiveAt: '2026-11-18T14:20:00.000Z',
-    completedAt: '2026-11-18T14:20:00.000Z',
-    daysToComplete: 3,
-    completedStages: [1, 2, 3, 4, 5, 6],
-    quizScores: {
-      'quiz-stage-1': 100,
-      'quiz-stage-2': 95,
-      'quiz-stage-3': 100,
-      'quiz-stage-4': 90,
-      'quiz-stage-5': 95,
-      'quiz-stage-6': 100,
-      'final-exam': 100
-    },
-    hasCertificate: true,
-    activityLog: [
-      { event: 'تسجيل حساب جديد', timestamp: '2026-11-15T09:30:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 1 (100%)', timestamp: '2026-11-15T11:00:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 2 (95%)', timestamp: '2026-11-16T10:15:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 3 (100%)', timestamp: '2026-11-16T16:00:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 4 (90%)', timestamp: '2026-11-17T12:30:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 5 (95%)', timestamp: '2026-11-17T18:00:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 6 (100%)', timestamp: '2026-11-18T13:00:00.000Z' },
-      { event: 'اجتياز الامتحان النهائي والحصول على الشهادة 🏆', timestamp: '2026-11-18T14:20:00.000Z' }
-    ]
-  },
-  {
-    id: 'demo-std-2',
-    name: 'سارة أحمد ممدوح',
-    school: 'مدرسة الأمل الرسمية',
-    avatar: '🌟',
-    registeredAt: '2026-11-14T08:00:00.000Z',
-    lastActiveAt: '2026-11-19T17:45:00.000Z',
-    completedAt: '2026-11-19T17:45:00.000Z',
-    daysToComplete: 5,
-    completedStages: [1, 2, 3, 4, 5, 6],
-    quizScores: {
-      'quiz-stage-1': 90,
-      'quiz-stage-2': 85,
-      'quiz-stage-3': 95,
-      'quiz-stage-4': 85,
-      'quiz-stage-5': 90,
-      'quiz-stage-6': 95,
-      'final-exam': 92
-    },
-    hasCertificate: true,
-    activityLog: [
-      { event: 'تسجيل حساب جديد', timestamp: '2026-11-14T08:00:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 1 (90%)', timestamp: '2026-11-14T15:20:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 2 (85%)', timestamp: '2026-11-16T11:00:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 3 (95%)', timestamp: '2026-11-17T14:10:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 4 (85%)', timestamp: '2026-11-18T09:30:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 5 (90%)', timestamp: '2026-11-18T16:00:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 6 (95%)', timestamp: '2026-11-19T15:30:00.000Z' },
-      { event: 'اجتياز الامتحان النهائي ونيل شهادة الإتقان 📜', timestamp: '2026-11-19T17:45:00.000Z' }
-    ]
-  },
-  {
-    id: 'demo-std-3',
-    name: 'يوسف كريم إبراهيم',
-    school: 'مدرسة النيل الابتدائية',
-    avatar: '🦁',
-    registeredAt: '2026-11-18T11:20:00.000Z',
-    lastActiveAt: '2026-11-20T19:10:00.000Z',
-    completedAt: null,
-    daysToComplete: null,
-    completedStages: [1, 2, 3],
-    quizScores: {
-      'quiz-stage-1': 95,
-      'quiz-stage-2': 90,
-      'quiz-stage-3': 85
-    },
-    hasCertificate: false,
-    activityLog: [
-      { event: 'تسجيل حساب جديد', timestamp: '2026-11-18T11:20:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 1 (95%)', timestamp: '2026-11-18T16:00:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 2 (90%)', timestamp: '2026-11-19T13:40:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 3 (85%)', timestamp: '2026-11-20T19:10:00.000Z' }
-    ]
-  },
-  {
-    id: 'demo-std-4',
-    name: 'مريم طارق عبد الرحمن',
-    school: 'مدرسة رواد المستقبل',
-    avatar: '🧠',
-    registeredAt: '2026-11-19T14:00:00.000Z',
-    lastActiveAt: '2026-11-21T01:30:00.000Z',
-    completedAt: null,
-    daysToComplete: null,
-    completedStages: [1, 2],
-    quizScores: {
-      'quiz-stage-1': 100,
-      'quiz-stage-2': 100
-    },
-    hasCertificate: false,
-    activityLog: [
-      { event: 'تسجيل حساب جديد', timestamp: '2026-11-19T14:00:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 1 (100%)', timestamp: '2026-11-20T10:00:00.000Z' },
-      { event: 'اجتياز اختبار المرحلة 2 (100%)', timestamp: '2026-11-21T01:30:00.000Z' }
-    ]
+export const DEFAULT_DEMO_STUDENTS = MOCK_STUDENTS_100;
+
+/**
+ * دمج السجلات الحقيقية مع العينات الـ 100
+ * يضمن ظهور الطلاب الحقيقيين أولاً، مع بقاء المجتمع ثرياً ونشطاً بـ 100 عينة
+ */
+export function mergeWithMockStudents(liveStudents = []) {
+  if (!Array.isArray(liveStudents) || liveStudents.length === 0) {
+    return MOCK_STUDENTS_100;
   }
-];
+  
+  const realNames = new Set(liveStudents.map(s => (s.name || '').trim().toLowerCase()));
+  const filteredMocks = MOCK_STUDENTS_100.filter(m => !realNames.has(m.name.trim().toLowerCase()));
+  
+  return [...liveStudents, ...filteredMocks];
+}
 
 /**
  * جلب قائمة الطلاب المسجلين
  */
 export function getRegisteredStudents() {
   try {
-    const raw = localStorage.getItem(STUDENTS_REGISTRY_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(STUDENTS_REGISTRY_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return mergeWithMockStudents(parsed);
+        }
       }
     }
   } catch (e) {
     console.warn("Error reading students registry:", e);
   }
-  return DEFAULT_DEMO_STUDENTS;
+  return MOCK_STUDENTS_100;
 }
 
 /**
@@ -153,7 +65,9 @@ export function getRegisteredStudents() {
  */
 export function saveRegisteredStudents(studentsList) {
   try {
-    localStorage.setItem(STUDENTS_REGISTRY_KEY, JSON.stringify(studentsList));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STUDENTS_REGISTRY_KEY, JSON.stringify(studentsList));
+    }
   } catch (e) {
     console.error("Error saving students registry:", e);
   }
@@ -296,11 +210,10 @@ export async function fetchStudentsFromGoogleSheets(customUrl = null, adminKey =
     }
     const data = await res.json();
     if (data.status === "success" && Array.isArray(data.students)) {
-      // إذا كانت السجلات حقيقية من الشيت، نحفظها محلياً لمزامنة الأجهزة
-      if (data.students.length > 0) {
-        saveRegisteredStudents(data.students);
-      }
-      return { success: true, count: data.count, students: data.students };
+      // دمج السجلات الحقيقية من Google Sheets مع العينات الـ 100 لتشجيع ومساندة الطلاب
+      const merged = mergeWithMockStudents(data.students);
+      saveRegisteredStudents(merged);
+      return { success: true, count: merged.length, realCount: data.count, students: merged };
     } else {
       return { success: false, message: data.message || "فشل جلب البيانات من Google Sheets" };
     }
