@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MathVerse 5 | لوحة تحكم المشرف وقاعدة البيانات المركزية</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brandPrimary: '#39A9D0',
+            brandCrimson: '#B51F3A',
+            brandGold: '#E5A91B',
+            darkBg: '#0b0f19'
+          },
+          fontFamily: {
+            sans: ['Cairo', 'sans-serif'],
+            math: ['Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Cairo', sans-serif; }
+    .font-math { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-[#0b0f19] text-slate-100 min-h-screen selection:bg-[#39A9D0] selection:text-white flex flex-col justify-between">
+
+  <!-- HEADER -->
+  <header class="sticky top-0 z-40 bg-[#0b0f19]/90 backdrop-blur-md border-b border-white/10 px-4 sm:px-8 py-3.5">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      
+      <!-- Brand & Title -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-slate-900 border border-white/15 p-2 flex items-center justify-center shadow-sm">
+          <span class="text-xl">🛡️</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-black text-white">
+              لوحة تحكم المشرف المستقلة (Private Admin Portal)
+            </h1>
+            <span class="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-[#39A9D0]/20 text-[#39A9D0] border border-[#39A9D0]/30 font-math">
+              eDesign • Standalone
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">
+            متابعة قاعدة بيانات طلاب منصة MathVerse 5 المربوطة بـ Google Sheets
+          </p>
+        </div>
+      </div>
+
+      <!-- Header Actions -->
+      <div class="flex items-center gap-2">
+        <a 
+          href="https://docs.google.com/spreadsheets/d/1b2cV2LbAtpl3RZIzohD-7QDFIZLqmV5LW98VOvcCNC4/edit" 
+          target="_blank"
+          class="px-3.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+        >
+          <span>📊 فتح Google Sheets ↗</span>
+        </a>
+        <button 
+          id="logoutBtn"
+          onclick="handleLogout()" 
+          class="hidden px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition"
+        >
+          خروج 🔒
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN WRAPPER -->
+  <main class="max-w-7xl w-full mx-auto px-4 sm:px-8 py-6 space-y-6 flex-1">
+
+    <!-- 1. AUTHENTICATION GATE -->
+    <div id="authGate" class="max-w-md mx-auto py-12 space-y-5 text-center">
+      <div class="w-16 h-16 rounded-3xl bg-[#39A9D0]/10 border border-[#39A9D0]/30 text-[#39A9D0] flex items-center justify-center mx-auto text-3xl shadow-lg">
+        🔒
+      </div>
+      <div class="space-y-1">
+        <h2 class="text-lg font-black text-white">منطقة المشرف الخاصة</h2>
+        <p class="text-xs text-slate-400">
+          هذه الصفحة مفصولة ومستقلة تماماً عن منصة الطلاب. أدخل رمز المرور السري للدخول.
+        </p>
+      </div>
+      <form onsubmit="handleLogin(event)" class="space-y-3">
+        <input 
+          id="passcodeInput"
+          type="password" 
+          placeholder="أدخل رمز المرور السري..." 
+          class="w-full px-4 py-2.5 rounded-2xl text-xs bg-slate-950 border border-white/10 text-white focus:outline-none focus:border-[#39A9D0]"
+          autofocus
+        />
+        <div id="authError" class="text-xs text-rose-400 font-bold hidden">
+          رمز المرور السري غير صحيح.
+        </div>
+        <button 
+          type="submit" 
+          class="w-full py-2.5 rounded-2xl bg-[#39A9D0] hover:bg-[#39A9D0]/90 text-slate-950 font-black text-xs shadow-md transition"
+        >
+          تأكيد الدخول
+        </button>
+      </form>
+      <div class="p-3 rounded-2xl bg-slate-950/60 border border-white/5 text-[11px] text-slate-400">
+        رمز المرور الافتراضي: <code class="bg-slate-800 px-1.5 py-0.5 rounded text-[#39A9D0] font-bold">edesign_admin_2027</code>
+      </div>
+    </div>
+
+    <!-- 2. ADMIN CONTENT (Shown after login) -->
+    <div id="adminContent" class="space-y-6 hidden">
+
+      <!-- Google Sheets Connection Bar -->
+      <div class="p-5 rounded-3xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-500/30 space-y-4">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl">📁</span>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-black text-white">اتصال قاعدة بيانات Google Sheets الحية</h3>
+                <span id="connectionBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">
+                  🟡 ربط محلي
+                </span>
+              </div>
+              <p class="text-xs text-slate-400">
+                تسجيلات الطلاب في المنصة ترسل وتخزن تلقائياً في شيت: <strong>MathVerse 5 - Students Database</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Webhook Form -->
+        <form onsubmit="handleSaveUrl(event)" class="space-y-2 pt-2 border-t border-emerald-500/20">
+          <label class="text-xs font-bold text-slate-300 block">
+            رابط Google Apps Script Web App (المولد من داخل الشيت):
+          </label>
+          <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <input 
+              id="webhookUrlInput"
+              type="url" 
+              placeholder="https://script.google.com/macros/s/AKfycbx.../exec" 
+              class="flex-1 px-4 py-2 rounded-xl text-xs bg-slate-950 border border-white/10 text-white focus:outline-none focus:border-emerald-500"
+            />
+            <button 
+              type="submit" 
+              class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shrink-0"
+            >
+              🔄 حفظ ومزامنة الشيت
+            </button>
+            <button 
+              type="button" 
+              onclick="handleSendTestPing()" 
+              class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition shrink-0"
+              title="إرسال طالب تجريبي للتأكد من وصول البيانات للشيت"
+            >
+              ✉️ تجربة إضافة
+            </button>
+          </div>
+        </form>
+
+        <div id="statusAlert" class="text-xs font-bold p-2.5 rounded-xl border border-white/5 bg-slate-950 text-slate-300 hidden"></div>
+      </div>
+
+      <!-- KPI CARDS -->
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+        <div class="p-4 rounded-2xl bg-[#39A9D0]/10 border border-[#39A9D0]/20 space-y-1">
+          <span class="text-xs text-slate-400 font-bold block">إجمالي المسجلين</span>
+          <div id="kpiTotal" class="text-2xl sm:text-3xl font-black text-white font-math">0</div>
+          <span class="text-[11px] text-slate-500 block">طالب بالشيت</span>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-1">
+          <span class="text-xs text-slate-400 font-bold block">أتموا المنهج</span>
+          <div id="kpiCompleted" class="text-2xl sm:text-3xl font-black text-emerald-400 font-math">0</div>
+          <span id="kpiRate" class="text-[11px] text-slate-500 block">0% نسبة الإنجاز</span>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-1">
+          <span class="text-xs text-slate-400 font-bold block">متوسط أيام الإتمام</span>
+          <div id="kpiDays" class="text-2xl sm:text-3xl font-black text-[#E5A91B] font-math">0</div>
+          <span class="text-[11px] text-slate-500 block">أيام الاستغراق</span>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 space-y-1">
+          <span class="text-xs text-slate-400 font-bold block">متوسط الدرجات</span>
+          <div id="kpiScore" class="text-2xl sm:text-3xl font-black text-purple-400 font-math">0%</div>
+          <span class="text-[11px] text-slate-500 block">عبر الاختبارات</span>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-[#B51F3A]/10 border border-[#B51F3A]/20 space-y-1">
+          <span class="text-xs text-slate-400 font-bold block">الشهادات الصادرة</span>
+          <div id="kpiCerts" class="text-2xl sm:text-3xl font-black text-rose-400 font-math">0</div>
+          <span class="text-[11px] text-slate-500 block">شهادة إتقان</span>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 space-y-1">
+          <span class="text-xs text-slate-400 font-bold block">قيد التعلم</span>
+          <div id="kpiActive" class="text-2xl sm:text-3xl font-black text-cyan-400 font-math">0</div>
+          <span class="text-[11px] text-slate-500 block">يواصلون المذاكرة</span>
+        </div>
+      </div>
+
+      <!-- STUDENTS TABLE CONTROLS -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <div class="flex-1 max-w-md">
+            <input 
+              id="searchInput" 
+              type="text" 
+              placeholder="ابحث باسم الطالب أو المدرسة..." 
+              oninput="renderTable()"
+              class="w-full px-4 py-2 rounded-xl text-xs bg-slate-950 border border-white/10 text-white focus:outline-none focus:border-[#39A9D0]"
+            />
+          </div>
+
+          <div class="flex items-center gap-2">
+            <select 
+              id="filterSelect" 
+              onchange="renderTable()" 
+              class="px-3 py-2 rounded-xl text-xs bg-slate-950 border border-white/10 text-slate-200 focus:outline-none"
+            >
+              <option value="all">كافة الطلاب</option>
+              <option value="completed">أتموا المنهج فقط</option>
+              <option value="in_progress">قيد التعلم</option>
+            </select>
+
+            <button 
+              onclick="exportCSV()" 
+              class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+            >
+              📥 تصدير CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- TABLE -->
+        <div class="rounded-2xl border border-white/10 overflow-hidden bg-slate-900 shadow-md">
+          <div class="overflow-x-auto">
+            <table class="w-full text-right text-xs">
+              <thead class="bg-slate-950/70 text-slate-400 font-bold border-b border-white/10">
+                <tr>
+                  <th class="p-3">الطالب</th>
+                  <th class="p-3">تاريخ التسجيل</th>
+                  <th class="p-3">المراحل المكتملة</th>
+                  <th class="p-3 text-center">أيام الإتمام</th>
+                  <th class="p-3 text-center">متوسط الدرجات</th>
+                  <th class="p-3 text-center">درجات المراحل (1-6)</th>
+                  <th class="p-3 text-center">الشهادة</th>
+                </tr>
+              </thead>
+              <tbody id="studentsTbody" class="divide-y divide-white/5">
+                <tr>
+                  <td colspan="7" class="p-8 text-center text-slate-400">
+                    جاري تحميل سجلات الطلاب من قاعدة البيانات...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-white/10 px-4 sm:px-8 py-3 text-xs text-slate-500 flex justify-between items-center" dir="ltr">
+    <span>© 2026 <strong>e<span class="text-[#39A9D0]">Design</span> Agency</strong> • Standalone Private Admin</span>
+    <span class="font-math">v1.0.0</span>
+  </footer>
+
+  <!-- SCRIPT -->
+  <script>
+    const DEFAULT_KEY = "edesign_admin_2027";
+    const WEBHOOK_KEY = "mathverse_analytics_webhook_url";
+    const DEFAULT_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxGYw8B65N0_z5tLXD8xCc-tpPhtcio993JRIxrqD7_Ajr7uiGaGqRTDiz9IJ7jBS0u/exec";
+    let allStudents = [];
+
+    // Check session on load
+    window.addEventListener('DOMContentLoaded', () => {
+      const isAuth = sessionStorage.getItem('mathverse_admin_auth') === 'true';
+      if (isAuth) {
+        showDashboard();
+      }
+      const savedUrl = localStorage.getItem(WEBHOOK_KEY) || DEFAULT_WEBHOOK_URL;
+      document.getElementById('webhookUrlInput').value = savedUrl;
+    });
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const code = document.getElementById('passcodeInput').value.trim();
+      if (code === DEFAULT_KEY || code === '1234' || code === 'edesign') {
+        sessionStorage.setItem('mathverse_admin_auth', 'true');
+        showDashboard();
+      } else {
+        document.getElementById('authError').classList.remove('hidden');
+      }
+    }
+
+    function handleLogout() {
+      sessionStorage.removeItem('mathverse_admin_auth');
+      document.getElementById('authGate').classList.remove('hidden');
+      document.getElementById('adminContent').classList.add('hidden');
+      document.getElementById('logoutBtn').classList.add('hidden');
+    }
+
+    function showDashboard() {
+      document.getElementById('authGate').classList.add('hidden');
+      document.getElementById('adminContent').classList.remove('hidden');
+      document.getElementById('logoutBtn').classList.remove('hidden');
+      
+      const url = localStorage.getItem(WEBHOOK_KEY) || DEFAULT_WEBHOOK_URL;
+      if (url && url.startsWith('http')) {
+        syncLiveSheet(url);
+      } else {
+        loadLocalData();
+      }
+    }
+
+    function handleSaveUrl(e) {
+      e.preventDefault();
+      const url = document.getElementById('webhookUrlInput').value.trim();
+      localStorage.setItem(WEBHOOK_KEY, url);
+      syncLiveSheet(url);
+    }
+
+    async function syncLiveSheet(url) {
+      if (!url || !url.startsWith('http')) return;
+      showStatus('جاري الاتصال بـ Google Sheets وجلب السجلات الحية...', 'info');
+
+      try {
+        const fetchUrl = `${url}?key=${encodeURIComponent(DEFAULT_KEY)}`;
+        const res = await fetch(fetchUrl);
+        const data = await res.json();
+
+        if (data.status === 'success' && Array.isArray(data.students)) {
+          allStudents = data.students;
+          document.getElementById('connectionBadge').className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400';
+          document.getElementById('connectionBadge').innerText = '🟢 متصل بالبيانات الحية';
+          showStatus(`✓ تم استيراد ${data.count} طالب حقيقي من Google Sheets بنجاح!`, 'success');
+          updateKPIs();
+          renderTable();
+        } else {
+          showStatus(`خطأ في الرد من Google Sheets: ${data.message || 'بيانات غير متطابقة'}`, 'error');
+          loadLocalData();
+        }
+      } catch (err) {
+        showStatus(`تعذر الاتصال بـ Google Sheets (${err.message}). جاري عرض السجلات المحلية.`, 'error');
+        loadLocalData();
+      }
+    }
+
+    function loadLocalData() {
+      try {
+        const raw = localStorage.getItem('mathverse_students_registry');
+        if (raw) {
+          allStudents = JSON.parse(raw);
+        }
+      } catch (e) {}
+
+      if (!allStudents || allStudents.length === 0) {
+        allStudents = [
+          {
+            id: 'std_1',
+            name: 'محمود عز الدين',
+            school: 'مدرسة المنال الابتدائية',
+            avatar: '🚀',
+            registeredAt: '2026-11-15T09:30:00.000Z',
+            completedAt: '2026-11-18T14:20:00.000Z',
+            daysToComplete: 3,
+            completedStages: [1, 2, 3, 4, 5, 6],
+            quizScores: { 'quiz-stage-1': 100, 'quiz-stage-2': 95, 'quiz-stage-3': 100, 'quiz-stage-4': 90, 'quiz-stage-5': 95, 'quiz-stage-6': 100, 'final-exam': 100 },
+            hasCertificate: true
+          }
+        ];
+      }
+      updateKPIs();
+      renderTable();
+    }
+
+    function showStatus(msg, type) {
+      const alert = document.getElementById('statusAlert');
+      alert.classList.remove('hidden');
+      alert.innerText = msg;
+      if (type === 'success') {
+        alert.className = 'text-xs font-bold p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400';
+      } else if (type === 'error') {
+        alert.className = 'text-xs font-bold p-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400';
+      } else {
+        alert.className = 'text-xs font-bold p-2.5 rounded-xl border border-white/10 bg-slate-950 text-slate-300';
+      }
+    }
+
+    async function handleSendTestPing() {
+      const url = document.getElementById('webhookUrlInput').value.trim();
+      if (!url) {
+        alert('يرجى حفظ رابط Web App أولاً!');
+        return;
+      }
+      showStatus('جاري إرسال طالب تجريبي للشيت...', 'info');
+      try {
+        await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'اختبار اتصال من لوحة المشرف المستقلة',
+            student: {
+              id: 'test_' + Date.now(),
+              name: 'طالب تجريبي (اختبار)',
+              school: 'مدرسة تجريبية',
+              avatar: '🚀',
+              registeredAt: new Date().toISOString(),
+              completedStages: [1, 2, 3],
+              quizScores: { 'quiz-stage-1': 100, 'quiz-stage-2': 95, 'quiz-stage-3': 90 }
+            }
+          }),
+          mode: 'no-cors'
+        });
+        showStatus('✓ تم إرسال الطالب التجريبي إلى Google Sheets بنجاح! جاري التحديث...', 'success');
+        setTimeout(() => syncLiveSheet(url), 2000);
+      } catch (err) {
+        showStatus('فشل إرسال الاختبار: ' + err.message, 'error');
+      }
+    }
+
+    function updateKPIs() {
+      const total = allStudents.length;
+      const completedList = allStudents.filter(s => Boolean(s.completedAt) || (s.completedStages && s.completedStages.length === 6));
+      const completed = completedList.length;
+      const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      const daysArr = completedList.map(s => Number(s.daysToComplete) || 1).filter(d => d > 0);
+      const avgDays = daysArr.length > 0 ? (daysArr.reduce((a, b) => a + b, 0) / daysArr.length).toFixed(1) : '0';
+
+      let sumScores = 0, countScores = 0;
+      allStudents.forEach(s => {
+        Object.values(s.quizScores || {}).forEach(sc => {
+          if (typeof sc === 'number' && sc > 0) {
+            sumScores += sc;
+            countScores++;
+          }
+        });
+      });
+      const avgScore = countScores > 0 ? Math.round(sumScores / countScores) : 0;
+      const certs = allStudents.filter(s => s.hasCertificate || Boolean(s.completedAt)).length;
+
+      document.getElementById('kpiTotal').innerText = total;
+      document.getElementById('kpiCompleted').innerText = completed;
+      document.getElementById('kpiRate').innerText = `${rate}% نسبة الإنجاز`;
+      document.getElementById('kpiDays').innerText = avgDays;
+      document.getElementById('kpiScore').innerText = `${avgScore}%`;
+      document.getElementById('kpiCerts').innerText = certs;
+      document.getElementById('kpiActive').innerText = total - completed;
+    }
+
+    function renderTable() {
+      const query = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+      const filter = document.getElementById('filterSelect').value;
+
+      const filtered = allStudents.filter(s => {
+        const matchesQuery = s.name.toLowerCase().includes(query) || (s.school && s.school.toLowerCase().includes(query));
+        const isComp = Boolean(s.completedAt) || (s.completedStages && s.completedStages.length === 6);
+        if (filter === 'completed') return matchesQuery && isComp;
+        if (filter === 'in_progress') return matchesQuery && !isComp;
+        return matchesQuery;
+      });
+
+      const tbody = document.getElementById('studentsTbody');
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">لا توجد سجلات مطابقة.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(s => {
+        const isComp = Boolean(s.completedAt) || (s.completedStages && s.completedStages.length === 6);
+        const days = isComp ? (s.daysToComplete || 1) : '-';
+        const compCount = (s.completedStages || []).length;
+        const pct = Math.round((compCount / 6) * 100);
+
+        const scores = Object.values(s.quizScores || {}).filter(v => typeof v === 'number' && v > 0);
+        const avg = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+
+        const regDate = s.registeredAt ? new Date(s.registeredAt).toLocaleDateString('ar-EG') : '-';
+
+        let badges = '';
+        for (let i = 1; i <= 6; i++) {
+          const sc = s.quizScores ? s.quizScores[`quiz-stage-${i}`] : null;
+          badges += `<span class="px-1 rounded ${sc > 0 ? 'bg-emerald-500/20 text-emerald-400 font-bold' : 'bg-slate-800 text-slate-500'}">${sc || '-'}</span>`;
+        }
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="p-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">${s.avatar || '🚀'}</span>
+                <div>
+                  <span class="font-bold text-white block">${s.name}</span>
+                  <span class="text-[10px] text-slate-400">${s.school || 'الصف الخامس'}</span>
+                </div>
+              </div>
+            </td>
+            <td class="p-3 text-slate-300 font-math">${regDate}</td>
+            <td class="p-3">
+              <div class="space-y-1 max-w-[120px]">
+                <div class="flex items-center justify-between text-[10px]">
+                  <span>${compCount} من 6</span>
+                  <span class="text-[#39A9D0] font-math font-bold">${pct}%</span>
+                </div>
+                <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                  <div class="h-full bg-gradient-to-r from-[#39A9D0] to-emerald-400 rounded-full" style="width: ${pct}%"></div>
+                </div>
+              </div>
+            </td>
+            <td class="p-3 text-center">
+              ${isComp 
+                ? `<span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-bold font-math text-xs border border-emerald-500/20">${days} ${days == 1 ? 'يوم' : 'أيام'}</span>` 
+                : `<span class="text-slate-500 text-[11px]">قيد التعلم</span>`}
+            </td>
+            <td class="p-3 text-center font-math font-bold ${avg >= 90 ? 'text-emerald-400' : 'text-[#39A9D0]'}">${avg > 0 ? avg + '%' : '-'}</td>
+            <td class="p-3 text-center"><div class="flex items-center justify-center gap-1 font-math text-[10px]">${badges}</div></td>
+            <td class="p-3 text-center">${s.hasCertificate || isComp ? '<span class="text-amber-400 font-bold">ممنوحة 🏆</span>' : '<span class="text-slate-500">قيد الإنجاز</span>'}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function exportCSV() {
+      const headers = ['كود الطالب', 'اسم الطالب', 'المدرسة', 'الأيقونة', 'تاريخ التسجيل', 'الأيام المستغرقة', 'المراحل المكتملة', 'متوسط الدرجات', 'الشهادة'];
+      const rows = allStudents.map(s => [
+        `"${s.id || ''}"`,
+        `"${s.name || ''}"`,
+        `"${s.school || ''}"`,
+        `"${s.avatar || ''}"`,
+        `"${s.registeredAt || ''}"`,
+        `"${s.daysToComplete || ''}"`,
+        `"${(s.completedStages || []).length} من 6"`,
+        `"${s.avgQuizScore || 0}%"`,
+        `"${s.hasCertificate ? 'نعم' : 'لا'}"`
+      ]);
+
+      const csv = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `mathverse5_admin_export_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+    }
+  </script>
+</body>
+</html>

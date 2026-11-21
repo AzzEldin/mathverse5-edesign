@@ -1,14 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   X, Users, Award, Clock, Calendar, CheckCircle,
   TrendingUp, RefreshCw, Search, ShieldCheck,
-  School, BookOpen, UserCheck
+  School, BookOpen, UserCheck, ExternalLink, CloudCheck, Wifi
 } from 'lucide-react';
 import { edesignShieldWhite, edesignShieldColor } from '../../data/brandingIcons';
 import { STAGES_DATA } from '../../data/curriculumData';
 import {
   computePlatformAnalytics,
-  calculateDaysBetween
+  calculateDaysBetween,
+  fetchStudentsFromGoogleSheets,
+  GOOGLE_SHEET_URL
 } from '../../utils/analyticsTracker';
 
 export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark', studentProfile = null }) {
@@ -16,6 +18,43 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'completed' | 'in_progress'
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(null);
+
+  // مزامنة سحابية مع Google Sheets
+  const handleSyncWithCloud = async () => {
+    setIsSyncing(true);
+    setSyncStatus({ status: 'loading', message: 'جاري الاتصال السحابي بـ Google Sheets...' });
+    try {
+      const res = await fetchStudentsFromGoogleSheets();
+      if (res && res.success) {
+        setSyncStatus({
+          status: 'success',
+          message: `تم التحديث المباشر من Google Sheets (${res.count} طالب مسجل) 🟢`
+        });
+        setRefreshTrigger(t => t + 1);
+      } else {
+        setSyncStatus({
+          status: 'fallback',
+          message: res?.message || 'تعذر جلب البيانات الحية، يتم عرض البيانات المحلية والمسجلة'
+        });
+      }
+    } catch (e) {
+      setSyncStatus({
+        status: 'error',
+        message: 'حدث خطأ أثناء الاتصال السحابي، يتم عرض السجلات المحلية'
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // المزامنة التلقائية عند فتح النافذة
+  useEffect(() => {
+    if (isOpen) {
+      handleSyncWithCloud();
+    }
+  }, [isOpen]);
 
   // حساب الإحصائيات العامة للمنصة
   const analytics = useMemo(() => {
@@ -88,12 +127,24 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setRefreshTrigger(t => t + 1)}
-              className="p-2 rounded-xl bg-slate-200/70 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition"
-              title="تحديث البيانات"
+            <a
+              href="/admin.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-200/70 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#39A9D0] text-xs font-bold transition border border-[#39A9D0]/30 shadow-sm"
+              title="فتح لوحة تحكم المشرف المستقلة"
             >
-              <RefreshCw className="w-4 h-4" />
+              <span>لوحة المشرف</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+
+            <button
+              onClick={handleSyncWithCloud}
+              disabled={isSyncing}
+              className="p-2 rounded-xl bg-slate-200/70 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#39A9D0] transition disabled:opacity-50"
+              title="مزامنة حية مع Google Sheets"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
             </button>
             <button
               onClick={onClose}
@@ -104,6 +155,30 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
             </button>
           </div>
         </div>
+
+        {/* Sync Status Banner */}
+        {syncStatus && (
+          <div className={`px-4 sm:px-6 py-2 text-xs font-bold flex items-center justify-between border-b ${
+            syncStatus.status === 'success'
+              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+              : syncStatus.status === 'loading'
+              ? 'bg-[#39A9D0]/10 text-[#39A9D0] border-[#39A9D0]/20'
+              : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+          }`}>
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${syncStatus.status === 'success' ? 'bg-emerald-500 animate-pulse' : syncStatus.status === 'loading' ? 'bg-[#39A9D0] animate-ping' : 'bg-amber-500'}`}></span>
+              <span>{syncStatus.message}</span>
+            </div>
+            <a
+              href="/admin.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] underline sm:hidden font-bold"
+            >
+              لوحة المشرف ↗
+            </a>
+          </div>
+        )}
 
         {/* Tab Navigation (نظرة عامة / سجل الطلاب / تحليل المراحل) */}
         <div className="flex items-center gap-1 sm:gap-2 px-4 sm:px-6 pt-3 border-b border-slate-200 dark:border-white/10 bg-slate-100/50 dark:bg-slate-950/30 overflow-x-auto">

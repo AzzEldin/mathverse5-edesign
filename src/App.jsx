@@ -54,6 +54,9 @@ export default function App() {
   useEffect(() => {
     if (!studentProfile) {
       setIsRegisterOpen(true);
+    } else {
+      // مزامنة حالة الطالب الحالية مع قاعدة البيانات السحابية عند بدء التشغيل
+      recordStudentUpdate(studentProfile, userProgress, 'تسجيل دخول نشط');
     }
   }, [studentProfile]);
 

@@ -236,17 +236,37 @@ export function recordStudentUpdate(profile, progress = null, eventName = null) 
   return studentRecord;
 }
 
+export const GOOGLE_SHEET_ID = "1b2cV2LbAtpl3RZIzohD-7QDFIZLqmV5LW98VOvcCNC4";
+export const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/edit`;
+export const DEFAULT_ADMIN_KEY = "edesign_admin_2027";
+export const DEFAULT_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxGYw8B65N0_z5tLXD8xCc-tpPhtcio993JRIxrqD7_Ajr7uiGaGqRTDiz9IJ7jBS0u/exec";
+
+/**
+ * إعدادات Webhook للمشرف
+ */
+export function getWebhookUrl() {
+  return localStorage.getItem(WEBHOOK_URL_KEY) || DEFAULT_WEBHOOK_URL;
+}
+
+export function setWebhookUrl(url) {
+  if (url) {
+    localStorage.setItem(WEBHOOK_URL_KEY, url.trim());
+  } else {
+    localStorage.removeItem(WEBHOOK_URL_KEY);
+  }
+}
+
 /**
  * إرسال تحديثات الطالب لخادم سحابي أو Google Sheets Webhook مجاني
  */
 export async function broadcastToCloudWebhook(studentRecord, eventName) {
   try {
-    const webhookUrl = localStorage.getItem(WEBHOOK_URL_KEY);
+    const webhookUrl = getWebhookUrl();
     if (!webhookUrl || !webhookUrl.startsWith('http')) return;
 
     await fetch(webhookUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         event: eventName || 'user_activity',
         student: studentRecord,
@@ -258,10 +278,6 @@ export async function broadcastToCloudWebhook(studentRecord, eventName) {
     // تجاهل أخطاء الشبكة بصمت لعدم تعطيل تجربة الطالب
   }
 }
-
-export const GOOGLE_SHEET_ID = "1b2cV2LbAtpl3RZIzohD-7QDFIZLqmV5LW98VOvcCNC4";
-export const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/edit`;
-export const DEFAULT_ADMIN_KEY = "edesign_admin_2027";
 
 /**
  * جلب الطلاب مباشرة من Google Sheets باستخدام رابط Web App الخاص بك
@@ -280,7 +296,7 @@ export async function fetchStudentsFromGoogleSheets(customUrl = null, adminKey =
     }
     const data = await res.json();
     if (data.status === "success" && Array.isArray(data.students)) {
-      // مزامنة القائمة محلياً أيضاً
+      // إذا كانت السجلات حقيقية من الشيت، نحفظها محلياً لمزامنة الأجهزة
       if (data.students.length > 0) {
         saveRegisteredStudents(data.students);
       }
@@ -290,21 +306,6 @@ export async function fetchStudentsFromGoogleSheets(customUrl = null, adminKey =
     }
   } catch (err) {
     return { success: false, message: err.message || "تعذر الاتصال بـ Google Sheets" };
-  }
-}
-
-/**
- * إعدادات Webhook للمشرف
- */
-export function getWebhookUrl() {
-  return localStorage.getItem(WEBHOOK_URL_KEY) || '';
-}
-
-export function setWebhookUrl(url) {
-  if (url) {
-    localStorage.setItem(WEBHOOK_URL_KEY, url.trim());
-  } else {
-    localStorage.removeItem(WEBHOOK_URL_KEY);
   }
 }
 
