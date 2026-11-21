@@ -4,6 +4,7 @@
 [![Vite](https://img.shields.io/badge/Vite-5.4.11-646CFF.svg?logo=vite)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-3.4.17-38B2AC.svg?logo=tailwind-css)](https://tailwindcss.com/)
 [![Brand](https://img.shields.io/badge/Design-eDesign%20Agency-39A9D0.svg)](https://edesign.agency)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 منصة تعليمية رقمية تفاعلية مصممة خصيصاً لطلاب الصف الخامس الابتدائي (الفصل الدراسي الأول - المنهج المصري الحديث)، تجمع بين الشرح الصوتي التفاعلي، المعامل البصرية الرقمية، الفيديوهات التفاعلية بنقاط تفتيش، والاختبارات التقييمية مع إصدار شهادات إتقان رقمية معتمدة، وفق الهوية البصرية الرسمية لـ **eDesign Agency**.
 
@@ -160,7 +161,18 @@ scripts\run_batch_recording.bat
 
 ---
 
-## 📄 الترخيص وحقوق الملكية (License & Ownership)
+## 👥 فريق العمل والمطورون (Authors & Credits)
 
-جميع حقوق التصميم والهوية البصرية محفوظة لـ **[eDesign Agency](https://edesign.agency)** © 2026.
-المحتوى العلمي مبني وفق مناهج وزارة التربية والتعليم المصرية للصف الخامس الابتدائي.
+- **المالك والمطور الرئيسي (Lead Developer & Creator)**: 
+  **Ezz Eldin** ([@AzzEldin](https://github.com/AzzEldin))
+- **الهوية البصرية والتصميم (Brand & Visual Identity)**: 
+  **eDesign Agency** ([edesign.agency](https://edesign.agency))
+- **شريك التطوير الذكي (AI Development Partner)**: 
+  **Antigravity** (Google DeepMind Team)
+
+---
+
+## 📄 الترخيص (License)
+
+هذا المشروع متاح كمصدر مفتوح بموجب رخصة **MIT** مع اشتراط الإشارة للمطورين والاحتفاظ بإشعار حقوق الملكية الأصلية.
+All rights reserved © 2026 Ezz Eldin & eDesign Agency.

@@ -1,8 +1,13 @@
 {
   "name": "mathverse5-edesign",
-  "private": true,
   "version": "1.0.0",
   "type": "module",
+  "license": "MIT",
+  "author": "Ezz Eldin <mr.azz.vip@gmail.com> (https://github.com/AzzEldin)",
+  "contributors": [
+    "eDesign Agency (https://edesign.agency)",
+    "Antigravity AI (Google DeepMind Team)"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
