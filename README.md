@@ -3,12 +3,19 @@
 # MathVerse 5 🚀📐 | منصة رياضيات الصف الخامس الابتدائي
 
 <p align="center" dir="ltr">
+  <a href="https://mathverse5.vercel.app"><img src="https://img.shields.io/badge/Live_Demo-mathverse5.vercel.app-39A9D0?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" /></a>
+</p>
+
+<p align="center" dir="ltr">
+  <a href="https://mathverse5.vercel.app"><img src="https://img.shields.io/badge/Deployment-Vercel-black.svg?logo=vercel&logoColor=white" alt="Vercel" /></a>
   <a href="https://reactjs.org/"><img src="https://img.shields.io/badge/React-18.3.1-blue.svg?logo=react" alt="React" /></a>
   <a href="https://vitejs.dev/"><img src="https://img.shields.io/badge/Vite-5.4.11-646CFF.svg?logo=vite" alt="Vite" /></a>
   <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/TailwindCSS-3.4.17-38B2AC.svg?logo=tailwind-css" alt="Tailwind CSS" /></a>
   <a href="https://edesign.agency"><img src="https://img.shields.io/badge/Design-eDesign%20Agency-39A9D0.svg" alt="eDesign Agency" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
 </p>
+
+> 🌐 **رابط المنصة الحي على الإنترنت:** [https://mathverse5.vercel.app](https://mathverse5.vercel.app)
 
 منصة تعليمية رقمية تفاعلية مصممة خصيصاً لطلاب الصف الخامس الابتدائي (الفصل الدراسي الأول - المنهج المصري الحديث)، تجمع بين الشرح الصوتي التفاعلي، المعامل البصرية الرقمية، الفيديوهات التفاعلية بنقاط تفتيش، والاختبارات التقييمية مع إصدار شهادات إتقان رقمية معتمدة، وفق الهوية البصرية الرسمية لوكالة **eDesign Agency**.
 
@@ -65,7 +72,14 @@
 
 ---
 
-## 🚀 التثبيت والتشغيل
+## 🌐 تجربة المنصة الحية (Live Production)
+
+يمكنك تجربة المنصة والتفاعل مع كافة الدروس والمعامل مباشرة عبر الرابط السحابي:
+👉 **[https://mathverse5.vercel.app](https://mathverse5.vercel.app)**
+
+---
+
+## 🚀 التثبيت والتشغيل المحلي
 
 ### المتطلبات الأساسية
 - بيئة **Node.js** (الإصدار `18.0.0` أو أحدث).
@@ -126,6 +140,7 @@ npm run build
 Math/
 ├── public/                 # الملفات الثابتة والصوتيات المولدة
 │   ├── audio/              # ملفات MP3 المضغوطة لدروس المنهج
+│   ├── admin.html          # لوحة تحكم المشرف المستقلة وقاعدة البيانات
 │   ├── favicon.png         # أيقونة التبويب الرسمية
 │   └── favicon.ico
 ├── src/                    # كود المصدر
