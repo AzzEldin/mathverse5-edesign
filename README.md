@@ -1,109 +1,131 @@
+<div dir="rtl">
+
 # MathVerse 5 🚀📐 | منصة رياضيات الصف الخامس الابتدائي
 
-[![React](https://img.shields.io/badge/React-18.3.1-blue.svg?logo=react)](https://reactjs.org/)
-[![Vite](https://img.shields.io/badge/Vite-5.4.11-646CFF.svg?logo=vite)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-3.4.17-38B2AC.svg?logo=tailwind-css)](https://tailwindcss.com/)
-[![Brand](https://img.shields.io/badge/Design-eDesign%20Agency-39A9D0.svg)](https://edesign.agency)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<p align="center" dir="ltr">
+  <a href="https://reactjs.org/"><img src="https://img.shields.io/badge/React-18.3.1-blue.svg?logo=react" alt="React" /></a>
+  <a href="https://vitejs.dev/"><img src="https://img.shields.io/badge/Vite-5.4.11-646CFF.svg?logo=vite" alt="Vite" /></a>
+  <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/TailwindCSS-3.4.17-38B2AC.svg?logo=tailwind-css" alt="Tailwind CSS" /></a>
+  <a href="https://edesign.agency"><img src="https://img.shields.io/badge/Design-eDesign%20Agency-39A9D0.svg" alt="eDesign Agency" /></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
+</p>
 
-منصة تعليمية رقمية تفاعلية مصممة خصيصاً لطلاب الصف الخامس الابتدائي (الفصل الدراسي الأول - المنهج المصري الحديث)، تجمع بين الشرح الصوتي التفاعلي، المعامل البصرية الرقمية، الفيديوهات التفاعلية بنقاط تفتيش، والاختبارات التقييمية مع إصدار شهادات إتقان رقمية معتمدة، وفق الهوية البصرية الرسمية لـ **eDesign Agency**.
+منصة تعليمية رقمية تفاعلية مصممة خصيصاً لطلاب الصف الخامس الابتدائي (الفصل الدراسي الأول - المنهج المصري الحديث)، تجمع بين الشرح الصوتي التفاعلي، المعامل البصرية الرقمية، الفيديوهات التفاعلية بنقاط تفتيش، والاختبارات التقييمية مع إصدار شهادات إتقان رقمية معتمدة، وفق الهوية البصرية الرسمية لوكالة **eDesign Agency**.
 
 ---
 
-## 🌟 أبرز المميزات (Key Features)
+## 🌟 أبرز المميزات
 
-1. **🎙️ شرح صوتي ذكي تفاعلي (Interactive Audio Narration):**
+1. **🎙️ شرح صوتي ذكي تفاعلي:**
    - أكثر من 60 تعليق وشرح صوتي احترافي بصوت طبيعي عالي الجودة (Silma TTS).
-   - مزامنة دقيقة للنصوص المسموعة (Karaoke Text Highlighting) لمساعدة الطلاب على المتابعة والتركيز البصري والسمعي.
+   - مزامنة دقيقة للنصوص المسموعة لمساعدة الطلاب على المتابعة والتركيز البصري والسمعي.
 
-2. **🧪 معامل بصرية تفاعلية (Interactive Math Labs):**
-   - **جدول القيمة المكانية العشري (Decimal Place Value):** تمثيل بصري لحركة الأرقام عند الضرب والقسمة في قوى العشرة.
-   - **مخطط الأجزاء العشرية (Decimal Grid 100/10):** تلوين وتمثيل الأجزاء من عشرة ومئة وألف.
-   - **معمل مساحة المستطيل (Area Model Multiplication):** تجزئة الأعداد والضرب التفاعلي خطوة بخطوة.
-   - **خوارزمية الضرب المعيارية (Standard Multiplication Trainer):** تدريب تفاعلي على الجمع وإعادة التسمية.
-   - **شجرة العوامل الأولية (Factor Tree):** تفكيك الأعداد إلى عواملها الأولية بصرية ممتعة.
-   - **مخطط فن للعوامل والمضاعفات (Venn Diagram GCD & LCM):** حساب ع.م.أ وم.م.أ بدقة وسلاسة.
-   - **النماذج الشريطية (Bar Models):** حل المعادلات الخطية البسيطة بطريقة مرئية مبسطة.
+2. **🧪 معامل بصرية تفاعلية:**
+   - **جدول القيمة المكانية العشري:** تمثيل بصري لحركة الأرقام عند الضرب والقسمة في قوى العشرة.
+   - **مخطط الأجزاء العشرية:** تلوين وتمثيل الأجزاء من عشرة ومئة وألف.
+   - **معمل مساحة المستطيل:** تجزئة الأعداد والضرب التفاعلي خطوة بخطوة.
+   - **خوارزمية الضرب المعيارية:** تدريب تفاعلي على الجمع وإعادة التسمية.
+   - **شجرة العوامل الأولية:** تفكيك الأعداد إلى عواملها الأولية بصورة ممتعة.
+   - **مخطط فن للعوامل والمضاعفات:** حساب ع.م.أ وم.م.أ بدقة وسلاسة.
+   - **النماذج الشريطية:** حل المعادلات الخطية البسيطة بطريقة مرئية مبسطة.
 
-3. **🎬 فيديوهات تعليمية بنقاط تفتيش (Interactive Checkpoint Videos):**
+3. **🎬 فيديوهات تعليمية بنقاط تفتيش:**
    - تشغيل مقاطع الشرح مع توقف تلقائي عند نقاط تفتيش محددة لطرح أسئلة تفاعلية تضمن استيعاب الطالب قبل مواصلة المشاهدة.
 
-4. **🏆 نظام تقييم وشهادات إتقان قابلة للطباعة (Quizzes & Certificate):**
-   - بنك أسئلة واختبارات شاملة لكل مرحلة دراسية مع تغذية راجعة فورية ومؤثرات صوتية واحتفالية (Canvas Confetti).
+4. **🏆 نظام تقييم وشهادات إتقان قابلة للطباعة:**
+   - بنك أسئلة واختبارات شاملة لكل مرحلة دراسية مع تغذية راجعة فورية ومؤثرات صوتية واحتفالية.
    - إصدار شهادة إتقان رقمية رسمية باسم الطالب تحمل درع وهوية الوكالة، جاهزة للطباعة والتصدير بجودة عالية.
 
-5. **🎨 هوية بصرية عصرية موحدة (eDesign Agency UI/UX):**
-   - لوحة ألوان الهوية: الأزرق السماوي (`#39A9D0`)، الأحمر القرمزي (`#B51F3A`)، والذهبي (`#E5A91B`).
+5. **🎨 هوية بصرية عصرية موحدة:**
+   - ألوان الهوية المعتمدة: الأزرق السماوي (`#39A9D0`)، الأحمر القرمزي (`#B51F3A`)، والذهبي (`#E5A91B`).
    - شريط تنقل زجاجي عصري مع درع الوكالة الرسمي ووضع ليلي/نهاري متناسق.
    - واجهة متجاوبة بالكامل مع الهواتف الذكية والأجهزة اللوحية والشاشات الكبيرة.
 
 ---
 
-## 📚 هيكل المنهج الدراسي (Curriculum Structure)
+## 📚 هيكل المنهج الدراسي
 
 تغطي المنصة كافة وحدات الفصل الدراسي الأول للصف الخامس:
-- **المرحلة 1: الكسور العشرية حتى جزء من ألف (Decimals to Thousandths)**
-- **المرحلة 2: جمع وطرح الكسور العشرية (Decimal Addition & Subtraction)**
-- **المرحلة 3: ضرب الأعداد الصحيحة (Whole Number Multiplication)**
-- **المرحلة 4: قسمة الأعداد الصحيحة (Whole Number Division)**
-- **المرحلة 5: العوامل والمضاعفات (Factors & Multiples - GCD & LCM)**
-- **المرحلة 6: ضرب وقسمة الكسور العشرية (Decimal Multiplication & Division)**
+- **المرحلة 1:** الكسور العشرية حتى جزء من ألف
+- **المرحلة 2:** جمع وطرح الكسور العشرية
+- **المرحلة 3:** ضرب الأعداد الصحيحة
+- **المرحلة 4:** قسمة الأعداد الصحيحة
+- **المرحلة 5:** العوامل والمضاعفات (ع.م.أ وم.م.أ)
+- **المرحلة 6:** ضرب وقسمة الكسور العشرية
 
 ---
 
-## 🛠️ التقنيات المستخدمة (Tech Stack)
+## 🛠️ التقنيات المستخدمة
 
-- **Frontend:** [React 18](https://react.dev/) + [Vite 5](https://vitejs.dev/)
-- **Styling:** [Tailwind CSS 3](https://tailwindcss.com/) + PostCSS + Autoprefixer
-- **Icons:** [Lucide React](https://lucide.dev/)
-- **Animations & Effects:** Canvas Confetti + Custom CSS Keyframes
-- **Audio Engine (Batch Generator):** Python 3 + Silma TTS (Offline Local Inference) + FFmpeg
-
----
-
-## 🚀 التثبيت والتشغيل (Getting Started)
-
-### المتطلبات الأساسية (Prerequisites)
-- [Node.js](https://nodejs.org/) الإصدار `18.0.0` أو أحدث.
-- مدير الحزم `npm` (مرفق مع Node) أو `pnpm` أو `yarn`.
-
-### خطوات التثبيت (Installation)
-1. استنسخ المستودع:
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/mathverse5-edesign.git
-   cd mathverse5-edesign
-   ```
-
-2. ثبّت الاعتماديات:
-   ```bash
-   npm install
-   ```
-
-3. شغّل خادم التطوير المحلي:
-   ```bash
-   npm run dev
-   ```
-   افتح المتصفح على: `http://localhost:5173`
-
-4. بناء المشروع للإنتاج (Production Build):
-   ```bash
-   npm run build
-   ```
-   تُحفظ مخرجات البناء الجاهزة للنشر في مجلد `dist/`.
-
-5. معاينة نسخة الإنتاج محلياً:
-   ```bash
-   npm run preview
-   ```
+- **الواجهة الأمامية:** React 18 + Vite 5
+- **التصميم والأنماط:** Tailwind CSS 3 + PostCSS + Autoprefixer
+- **الأيقونات:** Lucide React
+- **المؤثرات والاحتفالات:** Canvas Confetti + Custom CSS Animations
+- **محرك توليد الصوتيات:** Python 3 + Silma TTS + FFmpeg
 
 ---
 
-## 📂 بنية المشروع (Project Directory)
+## 🚀 التثبيت والتشغيل
+
+### المتطلبات الأساسية
+- بيئة **Node.js** (الإصدار `18.0.0` أو أحدث).
+- مدير الحزم `npm` (مرفق تلقائياً مع Node).
+
+### خطوات التشغيل
+
+1. استنساخ المستودع:
+
+<div dir="ltr">
+
+```bash
+git clone https://github.com/AzzEldin/mathverse5-edesign.git
+cd mathverse5-edesign
+```
+
+</div>
+
+2. تثبيت الحزم والاعتماديات:
+
+<div dir="ltr">
+
+```bash
+npm install
+```
+
+</div>
+
+3. تشغيل خادم التطوير المحلي:
+
+<div dir="ltr">
+
+```bash
+npm run dev
+```
+
+</div>
+
+افتح المتصفح على الرابط المحلي: `http://localhost:5173`
+
+4. بناء نسخة الإنتاج:
+
+<div dir="ltr">
+
+```bash
+npm run build
+```
+
+</div>
+
+---
+
+## 📂 بنية مجلدات المشروع
+
+<div dir="ltr">
 
 ```plaintext
 Math/
 ├── public/                 # الملفات الثابتة والصوتيات المولدة
-│   ├── audio/              # ملفات MP3 المضغوطة لدروس المنهج (~60 ملف)
+│   ├── audio/              # ملفات MP3 المضغوطة لدروس المنهج
 │   ├── favicon.png         # أيقونة التبويب الرسمية
 │   └── favicon.ico
 ├── src/                    # كود المصدر
@@ -124,27 +146,25 @@ Math/
 │   └── main.jsx            # نقطة الدخول (Entry Point)
 ├── branding/               # أصول وشعارات هوية eDesign الرسمية
 ├── scripts/                # سكريبتات إدارية وتوليد الصوتيات (Silma TTS)
-│   ├── generate_audio_silma.py
-│   ├── run_batch_recording.bat
-│   ├── tts_tasks.json
-│   └── video_tasks.json
-├── .gitignore              # ملف استثناء الملفات غير المرغوبة
+├── .gitignore              # استثناء الملفات
 ├── index.html              # قالب صفحة الويب
 ├── package.json            # الاعتماديات وإعدادات المشروع
 ├── tailwind.config.js      # إعدادات Tailwind وألوان eDesign
 └── vite.config.js          # إعدادات Vite
 ```
 
+</div>
+
 ---
 
-## ⚙️ سكريبتات توليد الصوتيات الاختيارية (Audio Generation)
+## ⚙️ سكريبتات توليد الصوتيات الاختيارية
 
-المشروع يحتوي بالفعل على كافة التسجيلات الصوتية الجاهزة داخل مجلد `public/audio/`.
-في حال رغبت بإعادة توليد أو تخصيص الصوتيات محلياً باستخدام نموذج Silma TTS:
+المشروع يحتوي بالفعل على كافة التسجيلات الصوتية الجاهزة داخل مجلد `public/audio/`.  
+في حال الرغبة بإعادة توليد أو تخصيص الصوتيات محلياً باستخدام نموذج Silma TTS:
+
+<div dir="ltr">
+
 ```bash
-# تحديد مسار نموذج Silma (اختياري، القيمة الافتراضية محددة محلياً)
-set SALMA_DIR=C:\path\to\silma
-
 # توليد عينة تجريبية للدرس الأول
 python scripts/generate_audio_silma.py --sample
 
@@ -152,27 +172,28 @@ python scripts/generate_audio_silma.py --sample
 scripts\run_batch_recording.bat
 ```
 
+</div>
+
 ---
 
-## 🔒 الأمان والخصوصية (Security & Privacy)
+## 🔒 الأمان والخصوصية
 
 - تم فحص المشروع بدقة للتأكد من خلوه من أي مفاتيح API خاصة أو بيانات اعتماد أو كلمات مرور.
 - تم استبعاد الملفات الشخصية وملفات الاختبارات المؤقتة والكتب الخارجية الضخمة من شجرة Git عبر `.gitignore`.
 
 ---
 
-## 👥 فريق العمل والمطورون (Authors & Credits)
+## 👥 فريق العمل والمطورون
 
-- **المالك والمطور الرئيسي (Lead Developer & Creator)**: 
-  **Ezz Eldin** ([@AzzEldin](https://github.com/AzzEldin))
-- **الهوية البصرية والتصميم (Brand & Visual Identity)**: 
-  **eDesign Agency** ([edesign.agency](https://edesign.agency))
-- **شريك التطوير الذكي (AI Development Partner)**: 
-  **Antigravity** (Google DeepMind Team)
+- **المالك والمطور الرئيسي:** [Ezz Eldin](https://github.com/AzzEldin) ([@AzzEldin](https://github.com/AzzEldin))
+- **الهوية البصرية والتصميم:** [eDesign Agency](https://edesign.agency)
+- **شريك التطوير الذكي:** Antigravity (Google DeepMind Team)
 
 ---
 
-## 📄 الترخيص (License)
+## 📄 الترخيص
 
-هذا المشروع متاح كمصدر مفتوح بموجب رخصة **MIT** مع اشتراط الإشارة للمطورين والاحتفاظ بإشعار حقوق الملكية الأصلية.
-All rights reserved © 2026 Ezz Eldin & eDesign Agency.
+هذا المشروع متاح كمصدر مفتوح بموجب رخصة **MIT**.  
+جميع الحقوق محفوظة © 2026 Ezz Eldin & eDesign Agency.
+
+</div>
