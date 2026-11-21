@@ -127,17 +127,6 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
           </div>
 
           <div className="flex items-center gap-2">
-            <a
-              href="/admin.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-200/70 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#39A9D0] text-xs font-bold transition border border-[#39A9D0]/30 shadow-sm"
-              title="فتح لوحة تحكم المشرف المستقلة"
-            >
-              <span>لوحة المشرف</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-
             <button
               onClick={handleSyncWithCloud}
               disabled={isSyncing}
@@ -169,14 +158,6 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
               <span className={`w-2 h-2 rounded-full ${syncStatus.status === 'success' ? 'bg-emerald-500 animate-pulse' : syncStatus.status === 'loading' ? 'bg-[#39A9D0] animate-ping' : 'bg-amber-500'}`}></span>
               <span>{syncStatus.message}</span>
             </div>
-            <a
-              href="/admin.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] underline sm:hidden font-bold"
-            >
-              لوحة المشرف ↗
-            </a>
           </div>
         )}
 

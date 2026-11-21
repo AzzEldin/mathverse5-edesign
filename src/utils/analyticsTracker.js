@@ -238,7 +238,7 @@ export function recordStudentUpdate(profile, progress = null, eventName = null) 
 
 export const GOOGLE_SHEET_ID = "1b2cV2LbAtpl3RZIzohD-7QDFIZLqmV5LW98VOvcCNC4";
 export const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/edit`;
-export const DEFAULT_ADMIN_KEY = "edesign_admin_2027";
+export const DEFAULT_ADMIN_KEY = "edesign_admin_25";
 export const DEFAULT_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxGYw8B65N0_z5tLXD8xCc-tpPhtcio993JRIxrqD7_Ajr7uiGaGqRTDiz9IJ7jBS0u/exec";
 
 /**

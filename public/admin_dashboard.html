@@ -116,7 +116,7 @@
         </button>
       </form>
       <div class="p-3 rounded-2xl bg-slate-950/60 border border-white/5 text-[11px] text-slate-400">
-        رمز المرور الافتراضي: <code class="bg-slate-800 px-1.5 py-0.5 rounded text-[#39A9D0] font-bold">edesign_admin_2027</code>
+        منطقة آمنة خاصة بالمشرف المصرح له فقط.
       </div>
     </div>
 
@@ -285,7 +285,7 @@
 
   <!-- SCRIPT -->
   <script>
-    const DEFAULT_KEY = "edesign_admin_2027";
+    const DEFAULT_KEY = "edesign_admin_25";
     const WEBHOOK_KEY = "mathverse_analytics_webhook_url";
     const DEFAULT_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxGYw8B65N0_z5tLXD8xCc-tpPhtcio993JRIxrqD7_Ajr7uiGaGqRTDiz9IJ7jBS0u/exec";
     let allStudents = [];
@@ -303,7 +303,7 @@
     function handleLogin(e) {
       e.preventDefault();
       const code = document.getElementById('passcodeInput').value.trim();
-      if (code === DEFAULT_KEY || code === '1234' || code === 'edesign') {
+      if (code === DEFAULT_KEY) {
         sessionStorage.setItem('mathverse_admin_auth', 'true');
         showDashboard();
       } else {
