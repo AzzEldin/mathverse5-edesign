@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Award, RotateCcw, Sparkles, GraduationCap, Sun, Moon, User, School, CheckCircle, ChevronDown, Edit3, UserX, BarChart3, Lock } from 'lucide-react';
+import { Award, RotateCcw, Sparkles, GraduationCap, Sun, Moon, User, School, CheckCircle, ChevronDown, Edit3, UserX, BarChart3, Lock, Compass, Share2 } from 'lucide-react';
 import { edesignShieldWhite, edesignShieldColor } from '../../data/brandingIcons';
 import { STAGES_DATA } from '../../data/curriculumData';
 
@@ -15,7 +15,9 @@ export default function Header({
   onOpenEditProfile,
   onResetStudent,
   onOpenCertificate,
-  onOpenAnalytics
+  onOpenAnalytics,
+  onOpenGuide,
+  onOpenShare
 }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -176,6 +178,40 @@ export default function Header({
                         <span>لوحة الإحصائيات العامة 📊</span>
                       </span>
                       <span className="text-[10px] bg-[#39A9D0]/20 text-[#39A9D0] px-1.5 py-0.5 rounded font-black">إحصاء</span>
+                    </button>
+                  )}
+
+                  {/* Platform Guide for Student & Parents/Teachers */}
+                  {onOpenGuide && (
+                    <button
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                        onOpenGuide();
+                      }}
+                      className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-500/15 via-teal-500/10 to-transparent hover:from-cyan-500/25 text-xs font-bold text-cyan-400 flex items-center justify-between transition border border-cyan-500/25 shadow-sm"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Compass className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>دليل المنصة (للأبطال وأولياء الأمور) 🧭</span>
+                      </span>
+                      <span className="text-[10px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded font-black">إرشاد</span>
+                    </button>
+                  )}
+
+                  {/* Share Platform Button */}
+                  {onOpenShare && (
+                    <button
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                        onOpenShare();
+                      }}
+                      className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-transparent hover:from-emerald-500/25 text-xs font-bold text-emerald-400 flex items-center justify-between transition border border-emerald-500/25 shadow-sm"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Share2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>مشاركة المنصة مع الزملاء 🚀</span>
+                      </span>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-black">نشر</span>
                     </button>
                   )}
 

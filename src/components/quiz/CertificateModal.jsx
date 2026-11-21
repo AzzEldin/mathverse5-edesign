@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Download, Printer, Award, CheckCircle2, Sparkles, School, User, Lock, Loader2, Check } from 'lucide-react';
+import { X, Download, Printer, Award, CheckCircle2, Sparkles, School, User, Lock, Loader2, Check, Share2 } from 'lucide-react';
 import { edesignShieldColor, edesignShieldWhite } from '../../data/brandingIcons';
 
 /**
@@ -404,6 +404,27 @@ export default function CertificateModal({
             >
               <Printer className="w-4 h-4 text-[#E5A91B]" />
               <span className="hidden sm:inline">طباعة</span>
+            </button>
+
+            {/* Quick Share Certificate */}
+            <button
+              onClick={() => {
+                const text = `🏆 حصل بطل الرياضيات "${studentName}" المقيد بمدرسة "${studentSchool}" على "وسام العبقري في الرياضيات" بنسبة إتقان ${finalScore}% في منصة MathVerse 5 التعليمية! 📐✨\n\nجرّب المنصة وتحدّ أبطال الرياضيات مجاناً عبر الرابط:\n👉 https://mathverse5.vercel.app`;
+                if (navigator.share) {
+                  navigator.share({
+                    title: `شهادة تفوق ${studentName} في الرياضيات 🏆`,
+                    text: text,
+                    url: 'https://mathverse5.vercel.app'
+                  }).catch(() => {});
+                } else {
+                  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+                }
+              }}
+              className="px-3.5 py-2.5 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+              title="مشاركة إنجازك وشهادتك مع الأصدقاء والأقارب على واتساب"
+            >
+              <Share2 className="w-4 h-4 text-emerald-500" />
+              <span className="hidden sm:inline">مشاركة الإنجاز</span>
             </button>
 
             {/* Close Button - Highly visible, prominent styling */}

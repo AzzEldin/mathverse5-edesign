@@ -8,6 +8,8 @@ import CertificateModal from './components/quiz/CertificateModal.jsx';
 import StudentRegistrationModal from './components/common/StudentRegistrationModal.jsx';
 import WelcomeSplashModal from './components/common/WelcomeSplashModal.jsx';
 import GeneralAnalyticsModal from './components/common/GeneralAnalyticsModal.jsx';
+import PlatformGuideModal from './components/common/PlatformGuideModal.jsx';
+import SharePlatformModal from './components/common/SharePlatformModal.jsx';
 import { recordStudentUpdate } from './utils/analyticsTracker.js';
 
 import { STAGES_DATA, FINAL_EXAM_INFO } from './data/curriculumData.js';
@@ -40,6 +42,8 @@ export default function App() {
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   // Student Profile state
   const [studentProfile, setStudentProfile] = useState(() => {
@@ -50,15 +54,29 @@ export default function App() {
     return null;
   });
 
-  // Prompt registration modal on first visit if profile not yet created
+  // Onboarding sequence on first visit: Guide first, then Registration if no profile
   useEffect(() => {
-    if (!studentProfile) {
-      setIsRegisterOpen(true);
-    } else {
-      // مزامنة حالة الطالب الحالية مع قاعدة البيانات السحابية عند بدء التشغيل
-      recordStudentUpdate(studentProfile, userProgress, 'تسجيل دخول نشط');
+    try {
+      const guideViewed = localStorage.getItem('mathverse_guide_viewed');
+      if (!guideViewed) {
+        setIsGuideOpen(true);
+      } else if (!studentProfile) {
+        setIsRegisterOpen(true);
+      } else {
+        // مزامنة حالة الطالب الحالية مع قاعدة البيانات السحابية عند بدء التشغيل
+        recordStudentUpdate(studentProfile, userProgress, 'تسجيل دخول نشط');
+      }
+    } catch (e) {
+      if (!studentProfile) setIsRegisterOpen(true);
     }
   }, [studentProfile]);
+
+  const handleCloseGuide = () => {
+    setIsGuideOpen(false);
+    if (!studentProfile) {
+      setIsRegisterOpen(true);
+    }
+  };
 
   const handleSaveStudentProfile = (profile) => {
     const isFirstTime = !studentProfile;
@@ -256,6 +274,8 @@ export default function App() {
         onResetStudent={handleResetStudent}
         onOpenCertificate={handleOpenCertificate}
         onOpenAnalytics={() => setIsAnalyticsOpen(true)}
+        onOpenGuide={() => setIsGuideOpen(true)}
+        onOpenShare={() => setIsShareOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -395,6 +415,21 @@ export default function App() {
         onClose={() => setIsAnalyticsOpen(false)}
         theme={theme}
         studentProfile={studentProfile}
+      />
+
+      {/* Platform Guide Modal (دليل المنصة للأبطال وأولياء الأمور) */}
+      <PlatformGuideModal
+        isOpen={isGuideOpen}
+        onClose={handleCloseGuide}
+        theme={theme}
+        onOpenShare={() => setIsShareOpen(true)}
+      />
+
+      {/* Share Platform Modal (نافذة المشاركة السريعة) */}
+      <SharePlatformModal
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+        theme={theme}
       />
 
       {/* Official eDesign Agency LTR Footer */}
