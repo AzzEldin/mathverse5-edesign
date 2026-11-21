@@ -226,7 +226,18 @@ export default function App() {
     setActiveQuizId('final-mastery-exam');
   };
 
-  const finalExamScore = userProgress.quizScores['final-mastery-exam'] || 90;
+  const isCertificateEarned = (userProgress?.completedStages || []).length === 6 &&
+    (userProgress?.quizScores?.['final-mastery-exam'] >= 80 || userProgress?.quizScores?.['final-exam'] >= 80);
+
+  const handleOpenCertificate = () => {
+    if (!isCertificateEarned) {
+      alert("الشهادة الرسمية مقفلة! يجب إتمام جميع المراحل الست واجتياز الامتحان النهائي الشامل أولاً.");
+      return;
+    }
+    setIsCertificateOpen(true);
+  };
+
+  const finalExamScore = userProgress.quizScores['final-mastery-exam'] || userProgress.quizScores['final-exam'] || 100;
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#0b0f19] dark:bg-[#0b0f19] light:bg-[#f8fafc] text-slate-100 dark:text-slate-100 light:text-slate-900 font-sans selection:bg-[#39A9D0] selection:text-white transition-colors duration-300">
@@ -243,7 +254,7 @@ export default function App() {
         studentProfile={studentProfile}
         onOpenEditProfile={() => setIsRegisterOpen(true)}
         onResetStudent={handleResetStudent}
-        onOpenCertificate={() => setIsCertificateOpen(true)}
+        onOpenCertificate={handleOpenCertificate}
         onOpenAnalytics={() => setIsAnalyticsOpen(true)}
       />
 

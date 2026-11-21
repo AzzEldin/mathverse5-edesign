@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Award, RotateCcw, Sparkles, GraduationCap, Sun, Moon, User, School, CheckCircle, ChevronDown, Edit3, UserX, BarChart3 } from 'lucide-react';
+import { Award, RotateCcw, Sparkles, GraduationCap, Sun, Moon, User, School, CheckCircle, ChevronDown, Edit3, UserX, BarChart3, Lock } from 'lucide-react';
 import { edesignShieldWhite, edesignShieldColor } from '../../data/brandingIcons';
 import { STAGES_DATA } from '../../data/curriculumData';
 
@@ -23,6 +23,7 @@ export default function Header({
   const totalPoints = Object.values(userProgress?.quizScores || {}).reduce((acc, score) => acc + (score || 0), 0);
   const completedCount = (userProgress?.completedStages || []).length;
   const isFinalUnlocked = [1, 2, 3, 4, 5, 6].every(num => (userProgress?.completedStages || []).includes(num));
+  const hasCertificate = completedCount === 6 && (userProgress?.quizScores?.['final-mastery-exam'] >= 80 || userProgress?.quizScores?.['final-exam'] >= 80);
   const currentStageInfo = STAGES_DATA.find(s => s.id === currentStageId) || STAGES_DATA[0];
 
   // Close dropdown when clicking outside
@@ -131,12 +132,12 @@ export default function Header({
                 {/* Action Buttons in Dropdown */}
                 <div className="space-y-1.5 pt-1">
 
-                  {/* View Certificate if available or completed */}
-                  {onOpenCertificate && (
+                  {/* View Certificate if available and completed */}
+                  {hasCertificate ? (
                     <button
                       onClick={() => {
                         setIsProfileOpen(false);
-                        onOpenCertificate();
+                        if (onOpenCertificate) onOpenCertificate();
                       }}
                       className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-transparent hover:from-amber-500/30 text-xs font-bold text-[#E5A91B] flex items-center justify-between transition border border-amber-500/30 shadow-sm"
                     >
@@ -146,6 +147,19 @@ export default function Header({
                       </span>
                       <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-black font-math">PDF</span>
                     </button>
+                  ) : (
+                    <div 
+                      className="w-full py-2 px-3 rounded-xl bg-slate-800/40 dark:bg-slate-800/40 light:bg-slate-100 text-slate-500 dark:text-slate-500 light:text-slate-400 text-xs font-semibold flex items-center justify-between border border-white/5 light:border-slate-200 cursor-not-allowed select-none"
+                      title="الشهادة مقفلة حتى إتمام المراحل الست واجتياز الامتحان النهائي الشامل بنسبة 80% فأكثر"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Lock className="w-3.5 h-3.5 text-slate-500" />
+                        <span>شهادة الإتقان (مقفلة 🔒)</span>
+                      </span>
+                      <span className="text-[10px] bg-slate-800 dark:bg-slate-800 light:bg-slate-200 text-slate-400 dark:text-slate-400 light:text-slate-600 px-1.5 py-0.5 rounded font-bold font-math">
+                        {completedCount}/6 مراحل
+                      </span>
+                    </div>
                   )}
                   
                   {/* General Analytics Modal Button */}
