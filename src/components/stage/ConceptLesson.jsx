@@ -210,6 +210,7 @@ export default function ConceptLesson({
   const keyPointRefs = useRef({});
   const summaryRef = useRef(null);
   const practiceProblemsRef = useRef(null);
+  const problemCardRef = useRef(null);
 
   // Auto-scroll to Lesson Summary when narration ends
   useEffect(() => {
@@ -220,11 +221,14 @@ export default function ConceptLesson({
     }
   }, [isSummaryActive]);
 
-  // Auto-scroll to Practice Problems when narrator says "فكر في حل..."
+  // Auto-scroll to Problem Statement when narrator says "فكر في حل..."
   useEffect(() => {
-    if (isPracticeThinkingActive && practiceProblemsRef.current) {
+    if (isPracticeThinkingActive) {
       setTimeout(() => {
-        practiceProblemsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const target = problemCardRef.current || practiceProblemsRef.current;
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }, 100);
     }
   }, [isPracticeThinkingActive]);
@@ -878,7 +882,11 @@ export default function ConceptLesson({
               return (
                 <div 
                   key={sIdx}
-                  className="glass-panel p-4 sm:p-7 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 space-y-4 hover:border-amber-400/40 transition-all flex flex-col justify-between text-right"
+                  className={`glass-panel p-4 sm:p-7 rounded-2xl sm:rounded-3xl border transition-all duration-500 flex flex-col justify-between text-right ${
+                    isPracticeThinkingActive && sIdx === 0
+                      ? 'border-[#E5A91B] shadow-[0_0_35px_rgba(229,169,27,0.35)] ring-2 ring-[#E5A91B]/70 bg-gradient-to-b from-[#E5A91B]/5 via-transparent to-transparent'
+                      : 'border-slate-200 dark:border-white/10 hover:border-amber-400/40'
+                  }`}
                 >
                   <div className="space-y-4">
                     
@@ -918,21 +926,32 @@ export default function ConceptLesson({
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-1">
                         {/* Right Column: Problem Statement & Mental Math Tip */}
                         <div className="lg:col-span-6 space-y-4 text-right">
-                          <div className={`p-4 sm:p-5 rounded-2xl border space-y-3 text-right transition-all duration-500 ${
-                            isPracticeThinkingActive
-                              ? 'bg-amber-500/15 border-[#E5A91B] ring-2 ring-[#E5A91B]/80 shadow-[0_0_25px_rgba(229,169,27,0.3)] scale-[1.01]'
-                              : 'bg-amber-500/5 dark:bg-slate-800/90 border-amber-500/25 dark:border-white/10'
-                          }`} dir="rtl">
-                            <div className="flex items-center justify-between">
+                          <div 
+                            ref={sIdx === 0 ? problemCardRef : null}
+                            className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl border space-y-3 text-right transition-all duration-500 ${
+                              isPracticeThinkingActive
+                                ? 'bg-amber-500/20 border-[#E5A91B] ring-4 ring-[#E5A91B]/60 shadow-[0_0_35px_rgba(229,169,27,0.45)] scale-[1.02]'
+                                : 'bg-amber-500/5 dark:bg-slate-800/90 border-amber-500/25 dark:border-white/10'
+                            }`} 
+                            dir="rtl"
+                          >
+                            <div className="flex items-center justify-between gap-2">
                               <span className="text-xs sm:text-sm font-black text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
                                 <HelpCircle className="w-4 h-4 text-[#E5A91B]" />
                                 <span>نص المسألة المطلوب حلها:</span>
                               </span>
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-[#E5A91B] border border-amber-500/30">
-                                مسألة تطبيقية كاملة 📝
-                              </span>
+                              {isPracticeThinkingActive ? (
+                                <span className="px-3 py-1 rounded-full bg-[#E5A91B] text-slate-950 text-xs font-black animate-pulse shadow-md flex items-center gap-1.5 shrink-0">
+                                  <Sparkles className="w-3.5 h-3.5 text-slate-950 animate-spin" />
+                                  <span>🎯 فكر في حل المسألة بنفسك الآن...</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-[#E5A91B] border border-amber-500/30 shrink-0">
+                                  مسألة تطبيقية كاملة 📝
+                                </span>
+                              )}
                             </div>
-                            <div className="text-xs sm:text-sm text-slate-800 dark:text-slate-100 font-medium leading-relaxed whitespace-pre-line text-right">
+                            <div className="text-xs sm:text-base text-slate-900 dark:text-slate-100 font-semibold leading-relaxed whitespace-pre-line text-right">
                               <MathExpression expr={section.problem || section.content} size="sm" dir="rtl" />
                             </div>
                           </div>
@@ -1000,21 +1019,32 @@ export default function ConceptLesson({
                     ) : (
                       <>
                         {/* Context / Problem Statement */}
-                        <div className={`p-3.5 sm:p-4 rounded-2xl border space-y-2 text-right transition-all duration-500 ${
-                          isPracticeThinkingActive
-                            ? 'bg-amber-500/15 border-[#E5A91B] ring-2 ring-[#E5A91B]/80 shadow-[0_0_25px_rgba(229,169,27,0.3)] scale-[1.01]'
-                            : 'bg-amber-500/5 dark:bg-slate-800/90 border-amber-500/25 dark:border-white/10'
-                        }`} dir="rtl">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-black text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                        <div 
+                          ref={sIdx === 0 ? problemCardRef : null}
+                          className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl border space-y-3 text-right transition-all duration-500 ${
+                            isPracticeThinkingActive
+                              ? 'bg-amber-500/20 border-[#E5A91B] ring-4 ring-[#E5A91B]/60 shadow-[0_0_35px_rgba(229,169,27,0.45)] scale-[1.02]'
+                              : 'bg-amber-500/5 dark:bg-slate-800/90 border-amber-500/25 dark:border-white/10'
+                          }`} 
+                          dir="rtl"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs sm:text-sm font-black text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
                               <HelpCircle className="w-4 h-4 text-[#E5A91B]" />
                               <span>نص المسألة المطلوب حلها:</span>
                             </span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-[#E5A91B] border border-amber-500/30">
-                              مسألة تطبيقية كاملة 📝
-                            </span>
+                            {isPracticeThinkingActive ? (
+                              <span className="px-3 py-1 rounded-full bg-[#E5A91B] text-slate-950 text-xs font-black animate-pulse shadow-md flex items-center gap-1.5 shrink-0">
+                                <Sparkles className="w-3.5 h-3.5 text-slate-950 animate-spin" />
+                                <span>🎯 فكر في حل المسألة بنفسك الآن...</span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-[#E5A91B] border border-amber-500/30 shrink-0">
+                                مسألة تطبيقية كاملة 📝
+                              </span>
+                            )}
                           </div>
-                          <div className="text-xs sm:text-sm text-slate-800 dark:text-slate-100 font-medium leading-relaxed whitespace-pre-line text-right">
+                          <div className="text-xs sm:text-base text-slate-900 dark:text-slate-100 font-semibold leading-relaxed whitespace-pre-line text-right">
                             <MathExpression expr={section.problem || section.content} size="sm" dir="rtl" />
                           </div>
                         </div>

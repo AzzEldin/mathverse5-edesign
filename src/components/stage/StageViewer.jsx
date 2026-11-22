@@ -194,6 +194,10 @@ export default function StageViewer({
         );
         if (matchIdx !== -1) {
           setCurrentSentenceIdx(matchIdx);
+          const curSentence = activeTask.sentences[matchIdx];
+          if (curSentence && curSentence.text && curSentence.text.includes('فكر')) {
+            setIsPracticeThinkingActive(true);
+          }
         }
       }
     };
@@ -423,6 +427,27 @@ export default function StageViewer({
 
     const recordedAudio = manifestKey ? audioManifest[manifestKey] : null;
 
+    // Schedule thinking highlight when narrator says "فكر في حل..." (for both MP3 & SpeechSynthesis)
+    if (targetStep.type === 'lesson' && targetStep.subTab === 'practice') {
+      setIsPracticeThinkingActive(false);
+      if (practiceThinkingTimerRef.current) clearTimeout(practiceThinkingTimerRef.current);
+      
+      const thinkSentence = recordedAudio?.sentences?.find(s => s.text && s.text.includes('فكر'));
+      const startTimeSec = (fromSentence > 0 && recordedAudio?.sentences?.[fromSentence]) ? recordedAudio.sentences[fromSentence].startTime : 0;
+      const targetTimeSec = thinkSentence ? Math.max(0, thinkSentence.startTime - startTimeSec) : 12;
+      const triggerDelayMs = Math.max(800, Math.floor((targetTimeSec * 1000) / audioRate));
+
+      practiceThinkingTimerRef.current = setTimeout(() => {
+        setIsPracticeThinkingActive(true);
+      }, triggerDelayMs);
+    } else {
+      setIsPracticeThinkingActive(false);
+      if (practiceThinkingTimerRef.current) {
+        clearTimeout(practiceThinkingTimerRef.current);
+        practiceThinkingTimerRef.current = null;
+      }
+    }
+
     if (recordedAudio && recordedAudio.url && !customText) {
       // 🌟 PRE-RECORDED SILMA AI AUDIO PLAYBACK 🌟
       activeManifestTaskRef.current = recordedAudio;
@@ -495,21 +520,6 @@ export default function StageViewer({
     }
 
     if (!textToSpeak) return;
-
-    // If speaking in practice tab: schedule thinking highlight when narrator says "فكر في حل..."
-    if (targetStep.type === 'lesson' && targetStep.subTab === 'practice') {
-      setIsPracticeThinkingActive(false);
-      if (practiceThinkingTimerRef.current) clearTimeout(practiceThinkingTimerRef.current);
-      practiceThinkingTimerRef.current = setTimeout(() => {
-        setIsPracticeThinkingActive(true);
-      }, 2400);
-    } else {
-      setIsPracticeThinkingActive(false);
-      if (practiceThinkingTimerRef.current) {
-        clearTimeout(practiceThinkingTimerRef.current);
-        practiceThinkingTimerRef.current = null;
-      }
-    }
 
     // Short 60ms delay before speak to let the browser audio thread fully purge the cancelled queue
     speakTimeoutRef.current = setTimeout(() => {

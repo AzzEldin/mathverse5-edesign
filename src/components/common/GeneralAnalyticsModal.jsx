@@ -19,7 +19,8 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'students' | 'stages'
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'completed' | 'in_progress'
-  const [sortBy, setSortBy] = useState('score_desc'); // 'score_desc' (الافتراضي: أعلى درجات) | 'completed' | 'newest' | 'name'
+  const [sortBy, setSortBy] = useState('completed'); // 'completed' (الافتراضي: الأكثر إنجازاً للمراحل) | 'score_desc' | 'newest' | 'name'
+  const [displayLimit, setDisplayLimit] = useState(30);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState(null);
@@ -64,9 +65,54 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
     return computePlatformAnalytics();
   }, [refreshTrigger]);
 
+  // استخراج سجل الطالب الحالي (المستخدم)
+  const currentStudentRecord = useMemo(() => {
+    if (!studentProfile?.name) return null;
+    const found = (analytics.studentsList || []).find(
+      s => (studentProfile.id && s.id === studentProfile.id) ||
+           (s.name && s.name.trim().toLowerCase() === studentProfile.name.trim().toLowerCase())
+    );
+    if (found) {
+      return {
+        ...found,
+        completedStages: studentProfile.completedStages || found.completedStages || [],
+        quizScores: { ...(found.quizScores || {}), ...(studentProfile.quizScores || {}) }
+      };
+    }
+    return {
+      id: studentProfile.id || 'std_current',
+      name: studentProfile.name,
+      school: studentProfile.school || 'الصف الخامس الابتدائي',
+      avatar: studentProfile.avatar || '🚀',
+      registeredAt: studentProfile.registeredAt || new Date().toISOString(),
+      lastActiveAt: new Date().toISOString(),
+      completedAt: studentProfile.completedAt || null,
+      daysToComplete: null,
+      completedStages: studentProfile.completedStages || [],
+      quizScores: studentProfile.quizScores || {},
+      hasCertificate: Boolean(studentProfile.hasCertificate),
+      activityLog: [
+        { event: 'تسجيل الدخول في المنصة', timestamp: studentProfile.registeredAt || new Date().toISOString() }
+      ]
+    };
+  }, [analytics.studentsList, studentProfile]);
+
   // تصفية وفرز الطلاب
   const filteredStudents = useMemo(() => {
-    const list = (analytics.studentsList || []).filter(student => {
+    let sourceList = analytics.studentsList || [];
+
+    // التأكد من إدراج الطالب الحالي في القائمة إن لم يكن مسجلاً سلفاً
+    if (studentProfile?.name && currentStudentRecord) {
+      const alreadyInList = sourceList.some(s =>
+        (studentProfile.id && s.id === studentProfile.id) ||
+        (s.name && s.name.trim().toLowerCase() === studentProfile.name.trim().toLowerCase())
+      );
+      if (!alreadyInList) {
+        sourceList = [currentStudentRecord, ...sourceList];
+      }
+    }
+
+    const list = sourceList.filter(student => {
       const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (student.school && student.school.toLowerCase().includes(searchQuery.toLowerCase()));
       
@@ -77,14 +123,26 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
       return matchesSearch;
     });
 
+    const isCurrentStudent = (s) => {
+      if (!studentProfile?.name) return false;
+      if (studentProfile.id && s.id === studentProfile.id) return true;
+      return Boolean(s.name && s.name.trim().toLowerCase() === studentProfile.name.trim().toLowerCase());
+    };
+
     return [...list].sort((a, b) => {
-      if (sortBy === 'score_desc') {
-        return compareStudentsByScore(a, b);
-      }
+      // 🌟 الطالب نفسه (المستخدم الحالي) يكون أول السجل تلقائياً وفي جميع خيارات الفرز
+      const isCurrentA = isCurrentStudent(a);
+      const isCurrentB = isCurrentStudent(b);
+      if (isCurrentA && !isCurrentB) return -1;
+      if (!isCurrentA && isCurrentB) return 1;
+
       if (sortBy === 'completed') {
         const compA = (a.completedStages || []).length;
         const compB = (b.completedStages || []).length;
         if (compB !== compA) return compB - compA;
+        return compareStudentsByScore(a, b);
+      }
+      if (sortBy === 'score_desc') {
         return compareStudentsByScore(a, b);
       }
       if (sortBy === 'newest') {
@@ -95,39 +153,46 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
       if (sortBy === 'name') {
         return (a.name || '').localeCompare(b.name || '', 'ar');
       }
+      const compA = (a.completedStages || []).length;
+      const compB = (b.completedStages || []).length;
+      if (compB !== compA) return compB - compA;
       return compareStudentsByScore(a, b);
     });
-  }, [analytics.studentsList, searchQuery, statusFilter, sortBy]);
+  }, [analytics.studentsList, searchQuery, statusFilter, sortBy, studentProfile, currentStudentRecord]);
 
-  // استخراج سجل الطالب الحالي (المستخدم)
-  const currentStudentRecord = useMemo(() => {
-    if (!studentProfile?.name) return null;
-    return (analytics.studentsList || []).find(
-      s => s.name.trim().toLowerCase() === studentProfile.name.trim().toLowerCase()
-    ) || {
-      name: studentProfile.name,
-      school: studentProfile.school || 'الصف الخامس الابتدائي',
-      avatar: studentProfile.avatar || '🚀',
-      activityLog: [
-        { event: 'تسجيل الدخول في المنصة', timestamp: studentProfile.registeredAt || new Date().toISOString() }
-      ]
-    };
-  }, [analytics.studentsList, studentProfile]);
+  // Reset pagination when filter or search changes
+  useEffect(() => {
+    setDisplayLimit(30);
+  }, [searchQuery, statusFilter, sortBy]);
+
+  const displayedStudents = useMemo(() => {
+    return filteredStudents.slice(0, displayLimit);
+  }, [filteredStudents, displayLimit]);
+
+  // التحقق إن كان الطالب الحالي هو الأول في القائمة المعروضة
+  const hasCurrentUserAtTop = useMemo(() => {
+    if (!studentProfile?.name || displayedStudents.length === 0) return false;
+    const first = displayedStudents[0];
+    return Boolean(
+      (studentProfile.id && first.id === studentProfile.id) ||
+      (first.name && first.name.trim().toLowerCase() === studentProfile.name.trim().toLowerCase())
+    );
+  }, [studentProfile, displayedStudents]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fadeIn" dir="rtl">
-      <div className="max-w-5xl w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] transition-colors">
+    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-hidden animate-fadeIn" dir="rtl">
+      <div className="max-w-5xl w-full h-[94vh] sm:h-[90vh] max-h-[880px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col transition-colors">
         
         {/* Modal Top Header */}
-        <div className="bg-slate-50 dark:bg-slate-950/70 border-b border-slate-200 dark:border-white/10 p-4 sm:p-5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm shrink-0">
+        <div className="bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200 dark:border-white/10 p-3 sm:p-5 flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm shrink-0">
               <img
                 src={theme === 'light' ? edesignShieldColor : edesignShieldWhite}
                 alt="eDesign Shield Logo"
-                className="h-6 w-6 sm:h-7 sm:w-7 object-contain"
+                className="h-5 w-5 sm:h-7 sm:w-7 object-contain"
                 style={{
                   filter: theme === 'light'
                     ? 'drop-shadow(0 2px 4px rgba(57, 169, 208, 0.4))'
@@ -135,16 +200,16 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
                 }}
               />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-lg font-black text-slate-900 dark:text-white truncate">
                   لوحة الإحصائيات العامة للمنصة
                 </h3>
-                <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-[#39A9D0]/15 text-[#39A9D0] border border-[#39A9D0]/30">
+                <span className="text-[9px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-[#39A9D0]/15 text-[#39A9D0] border border-[#39A9D0]/30 shrink-0">
                   MathVerse 5 Analytics
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 truncate hidden xs:block">
                 متابعة مؤشرات التعلم، نسبة إنجاز المنهج، وتوزيع تقدم الطلاب
               </p>
             </div>
@@ -171,7 +236,7 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
 
         {/* Sync Status Banner */}
         {syncStatus && (
-          <div className={`px-4 sm:px-6 py-2 text-xs font-bold flex items-center justify-between border-b ${
+          <div className={`px-4 sm:px-6 py-2 text-xs font-bold flex items-center justify-between border-b shrink-0 ${
             syncStatus.status === 'success'
               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
               : syncStatus.status === 'loading'
@@ -185,13 +250,13 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
           </div>
         )}
 
-        {/* Tab Navigation (نظرة عامة / سجل الطلاب / تحليل المراحل) */}
-        <div className="flex items-center gap-1 sm:gap-2 px-4 sm:px-6 pt-3 border-b border-slate-200 dark:border-white/10 bg-slate-100/50 dark:bg-slate-950/30 overflow-x-auto">
+        {/* Tab Navigation (نظرة عامة / سجل الطلاب / تحليل المراحل) - Sticky with shrink-0 */}
+        <div className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 pt-2 sm:pt-2.5 border-b border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-950/80 overflow-x-auto shrink-0 z-20 sticky top-0 backdrop-blur-md no-scrollbar">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-bold rounded-t-2xl border-b-2 transition flex items-center gap-1.5 whitespace-nowrap ${
+            className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold rounded-t-2xl border-b-2 transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
               activeTab === 'overview'
-                ? 'border-[#39A9D0] text-[#39A9D0] bg-white dark:bg-slate-900'
+                ? 'border-[#39A9D0] text-[#39A9D0] bg-white dark:bg-slate-900 shadow-sm'
                 : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
@@ -201,21 +266,21 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
 
           <button
             onClick={() => setActiveTab('students')}
-            className={`px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-bold rounded-t-2xl border-b-2 transition flex items-center gap-1.5 whitespace-nowrap ${
+            className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold rounded-t-2xl border-b-2 transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
               activeTab === 'students'
-                ? 'border-[#39A9D0] text-[#39A9D0] bg-white dark:bg-slate-900'
+                ? 'border-[#39A9D0] text-[#39A9D0] bg-white dark:bg-slate-900 shadow-sm'
                 : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>سجل الطلاب وتحليل الأيام ({analytics.totalStudents})</span>
+            <span>سجل الطلاب ({analytics.totalStudents})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('stages')}
-            className={`px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-bold rounded-t-2xl border-b-2 transition flex items-center gap-1.5 whitespace-nowrap ${
+            className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold rounded-t-2xl border-b-2 transition flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
               activeTab === 'stages'
-                ? 'border-[#39A9D0] text-[#39A9D0] bg-white dark:bg-slate-900'
+                ? 'border-[#39A9D0] text-[#39A9D0] bg-white dark:bg-slate-900 shadow-sm'
                 : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
@@ -224,8 +289,8 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
           </button>
         </div>
 
-        {/* Tab Content Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
+        {/* Tab Content Body - Scrollable with min-h-0 */}
+        <div className="p-3 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 flex-1 min-h-0 overscroll-contain">
 
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'overview' && (
@@ -349,26 +414,24 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
           {activeTab === 'students' && (
             <div className="space-y-6">
               {/* Controls bar */}
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2 flex-1 max-w-md">
-                  <div className="relative w-full">
-                    <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="ابحث باسم الطالب أو المدرسة..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-3 pr-9 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-[#39A9D0]"
-                    />
-                  </div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+                <div className="relative w-full sm:max-w-xs md:max-w-sm">
+                  <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="ابحث باسم الطالب أو المدرسة..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-3 pr-9 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-[#39A9D0]"
+                  />
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   {/* فلترة الحالة */}
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 focus:outline-none font-bold"
+                    className="flex-1 sm:flex-initial px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 focus:outline-none font-bold"
                   >
                     <option value="all">كافة الطلاب ({analytics.totalStudents})</option>
                     <option value="completed">أتموا المنهج فقط ({analytics.completedCount})</option>
@@ -379,31 +442,38 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 focus:outline-none font-bold text-[#39A9D0]"
+                    className="flex-1 sm:flex-initial px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 focus:outline-none font-bold text-[#39A9D0]"
                     title="ترتيب قائمة الطلاب"
                   >
-                    <option value="score_desc">🏆 أعلى متوسط درجات (افتراضي)</option>
-                    <option value="completed">📚 الأكثر إنجازاً للمراحل</option>
+                    <option value="completed">📚 الأكثر إنجازاً للمراحل (افتراضي)</option>
+                    <option value="score_desc">🏆 أعلى متوسط درجات</option>
                     <option value="newest">🕒 الأحدث تسجيلاً</option>
-                    <option value="name">🔤 أبجدياً بالاسم</option>
+                    <option value="name">🔤 أبجدياً (أ-ي)</option>
                   </select>
                 </div>
               </div>
 
               {/* Status and count indicator */}
-              <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold px-1">
-                <span>عرض {filteredStudents.length} من أصل {analytics.totalStudents} طالباً في مجتمع MathVerse 5 (مرتبين تنازلياً حسب أعلى متوسط درجات)</span>
-                <span className="text-emerald-500 flex items-center gap-1">
+              <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold px-1 flex-wrap gap-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span>عرض {displayedStudents.length} من أصل {filteredStudents.length} طالباً (إجمالي المسجلين: {analytics.totalStudents})</span>
+                  {studentProfile?.name && (
+                    <span className="text-[#39A9D0] bg-[#39A9D0]/10 px-2 py-0.5 rounded-full border border-[#39A9D0]/20 text-[10px] font-bold">
+                      📌 حسابك مثبت في مقدمة القائمة تلقائياً
+                    </span>
+                  )}
+                </div>
+                <span className="text-emerald-500 flex items-center gap-1 shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  مجتمع تعليمي نشط
+                  مجتمع تعليمي نشط 🟢
                 </span>
               </div>
 
-              {/* Students Table */}
-              <div className="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-right text-xs">
-                    <thead className="bg-slate-50 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-white/10">
+              {/* Students Table with Sticky Header */}
+              <div className="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white dark:bg-slate-900 shadow-sm flex flex-col">
+                <div className="overflow-x-auto max-h-[46vh] sm:max-h-[50vh] overflow-y-auto overscroll-contain">
+                  <table className="w-full text-right text-xs min-w-[620px] relative">
+                    <thead className="bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-white/10 sticky top-0 z-10 shadow-sm">
                       <tr>
                         <th className="p-3 text-center w-12 font-black">#</th>
                         <th className="p-3">الطالب</th>
@@ -415,14 +485,14 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                      {filteredStudents.length === 0 ? (
+                      {displayedStudents.length === 0 ? (
                         <tr>
                           <td colSpan="7" className="p-6 text-center text-slate-400">
                             لا يوجد طلاب مطابقين لمعايير البحث.
                           </td>
                         </tr>
                       ) : (
-                        filteredStudents.map((student, index) => {
+                        displayedStudents.map((student, index) => {
                           const isCompleted = Boolean(student.completedAt) || (student.completedStages && student.completedStages.length === 6);
                           const daysTaken = student.completedAt
                             ? (student.daysToComplete || calculateDaysBetween(student.registeredAt, student.completedAt))
@@ -430,19 +500,37 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
                           
                           const avgScore = getStudentAvgScore(student);
                           const completedCount = (student.completedStages || []).length;
-                          const isCurrent = studentProfile?.name && student.name.trim().toLowerCase() === studentProfile.name.trim().toLowerCase();
+                          const isCurrent = Boolean(
+                            (studentProfile?.id && student.id === studentProfile.id) ||
+                            (studentProfile?.name && student.name && student.name.trim().toLowerCase() === studentProfile.name.trim().toLowerCase())
+                          );
 
                           return (
                             <tr 
-                              key={student.id} 
-                              className={`transition ${isCurrent ? 'bg-[#39A9D0]/10 hover:bg-[#39A9D0]/15 font-semibold' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}
+                              key={student.id || `student-${student.name}-${index}`} 
+                              className={`transition ${isCurrent ? 'bg-[#39A9D0]/10 hover:bg-[#39A9D0]/15 font-semibold ring-1 ring-[#39A9D0]/30 dark:ring-[#39A9D0]/20' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}
                             >
                               {/* الترتيب والميداليات للثلاثة الأوائل */}
                               <td className="p-3 text-center font-math font-black text-xs">
-                                {index === 0 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400/20 text-amber-500 border border-amber-400/40 text-sm" title="المركز الأول 🥇">🥇</span>}
-                                {index === 1 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-300/20 text-slate-400 border border-slate-300/40 text-sm" title="المركز الثاني 🥈">🥈</span>}
-                                {index === 2 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-700/20 text-amber-600 border border-amber-600/40 text-sm" title="المركز الثالث 🥉">🥉</span>}
-                                {index > 2 && <span className="text-slate-400 dark:text-slate-500 font-bold">{index + 1}</span>}
+                                {isCurrent ? (
+                                  <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-lg bg-[#39A9D0]/20 text-[#39A9D0] border border-[#39A9D0]/40 text-[11px] font-black" title="حسابك (مثبت في أول السجل تلقائياً)">
+                                    ⭐ أنت
+                                  </span>
+                                ) : hasCurrentUserAtTop ? (
+                                  <>
+                                    {index === 1 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400/20 text-amber-500 border border-amber-400/40 text-sm" title="المركز الأول بين الطلاب 🥇">🥇</span>}
+                                    {index === 2 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-300/20 text-slate-400 border border-slate-300/40 text-sm" title="المركز الثاني بين الطلاب 🥈">🥈</span>}
+                                    {index === 3 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-700/20 text-amber-600 border border-amber-600/40 text-sm" title="المركز الثالث بين الطلاب 🥉">🥉</span>}
+                                    {index > 3 && <span className="text-slate-400 dark:text-slate-500 font-bold">{index}</span>}
+                                  </>
+                                ) : (
+                                  <>
+                                    {index === 0 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400/20 text-amber-500 border border-amber-400/40 text-sm" title="المركز الأول 🥇">🥇</span>}
+                                    {index === 1 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-300/20 text-slate-400 border border-slate-300/40 text-sm" title="المركز الثاني 🥈">🥈</span>}
+                                    {index === 2 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-700/20 text-amber-600 border border-amber-600/40 text-sm" title="المركز الثالث 🥉">🥉</span>}
+                                    {index > 2 && <span className="text-slate-400 dark:text-slate-500 font-bold">{index + 1}</span>}
+                                  </>
+                                )}
                               </td>
 
                               {/* Student name & avatar */}
@@ -532,6 +620,29 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination / Load More Bar */}
+                {filteredStudents.length > displayedStudents.length && (
+                  <div className="p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-950/70 border-t border-slate-200 dark:border-white/10 flex items-center justify-between text-xs px-3 sm:px-4 flex-wrap gap-2">
+                    <span className="text-slate-500 text-[11px]">
+                      يتم عرض {displayedStudents.length} من {filteredStudents.length} طالب
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setDisplayLimit(prev => prev + 30)}
+                        className="px-3 py-1.5 rounded-xl bg-[#39A9D0]/10 hover:bg-[#39A9D0]/20 text-[#39A9D0] font-bold text-xs transition"
+                      >
+                        عرض 30 طالب إضافي 🔽
+                      </button>
+                      <button
+                        onClick={() => setDisplayLimit(filteredStudents.length)}
+                        className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition"
+                      >
+                        عرض الكل ({filteredStudents.length})
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* عرض سجل الطالب (المستخدم الحالي) فقط بشكل افتراضي لحماية الخصوصية */}
@@ -652,7 +763,7 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
         </div>
 
         {/* Modal Footer */}
-        <div className="bg-slate-50 dark:bg-slate-950/70 border-t border-slate-200 dark:border-white/10 p-3 sm:p-4 flex items-center justify-between text-xs text-slate-500">
+        <div className="bg-slate-50 dark:bg-slate-950/80 border-t border-slate-200 dark:border-white/10 p-3 sm:p-4 flex items-center justify-between text-xs text-slate-500 shrink-0">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-[#39A9D0]" />
             <span>نظام إحصائيات معتمد لوكالة eDesign Agency • MathVerse 5</span>
