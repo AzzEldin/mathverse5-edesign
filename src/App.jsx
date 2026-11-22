@@ -282,7 +282,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-6 lg:px-8 py-3 sm:py-6 pb-28 sm:pb-32 space-y-4 sm:space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-4 sm:space-y-6">
         
         {/* View Switcher Bar (Roadmap vs Stage View) with Visual Gamification */}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900/40 dark:bg-slate-900/40 light:bg-slate-100/80 p-2 sm:p-2.5 rounded-3xl border border-white/10 dark:border-white/10 light:border-slate-200 backdrop-blur-md">

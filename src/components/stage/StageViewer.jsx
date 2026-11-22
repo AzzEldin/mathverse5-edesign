@@ -610,7 +610,7 @@ export default function StageViewer({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-28 sm:pb-32">
+    <div className="space-y-4 sm:space-y-6 pb-16 sm:pb-20">
       
       {/* Centered Smooth Responsive Modal for Locked Station & Lesson Alerts */}
       {lockToast && (

@@ -144,15 +144,33 @@ export default function ConceptLesson({
   };
 
   const sectionRefs = useRef([]);
+  const introRefs = useRef([]);
+  const formulaRefs = useRef([]);
+  const keyPointRefs = useRef({});
+
+  // Auto-scroll into view during live narration (especially crucial on mobile devices)
   useEffect(() => {
-    if (isPlayingAudio && activeSectionIdx >= 0 && sectionRefs.current[activeSectionIdx]) {
-      const el = sectionRefs.current[activeSectionIdx];
-      const rect = el.getBoundingClientRect();
-      if (rect.top < 70 || rect.bottom > window.innerHeight) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (!isPlayingAudio) return;
+
+    let targetEl = null;
+    if (isFormulaActive && formulaRefs.current[activeSectionIdx]) {
+      targetEl = formulaRefs.current[activeSectionIdx];
+    } else if (activeKeyPointIdx >= 0 && keyPointRefs.current[`${activeSectionIdx}_${activeKeyPointIdx}`]) {
+      targetEl = keyPointRefs.current[`${activeSectionIdx}_${activeKeyPointIdx}`];
+    } else if (introRefs.current[activeSectionIdx] && activeSectionIdx >= 0) {
+      targetEl = introRefs.current[activeSectionIdx];
+    } else if (sectionRefs.current[activeSectionIdx]) {
+      targetEl = sectionRefs.current[activeSectionIdx];
+    }
+
+    if (targetEl) {
+      const rect = targetEl.getBoundingClientRect();
+      // On mobile and desktop: If element is scrolled out of comfortable reading zone, smoothly bring it to center
+      if (rect.top < 85 || rect.bottom > window.innerHeight - 85) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
-  }, [activeSectionIdx, isPlayingAudio]);
+  }, [activeSectionIdx, isFormulaActive, activeKeyPointIdx, currentSentenceIdx, isPlayingAudio]);
 
   const toggleSolution = (key) => {
     setRevealedSolutions(prev => ({
@@ -387,6 +405,7 @@ export default function ConceptLesson({
             {currentLesson.sections.map((section, sIdx) => {
               const isCardActive = activeSectionIdx === sIdx && isPlayingAudio;
               const isCurrentFormulaActive = isCardActive && isFormulaActive;
+              const isIntroActive = isCardActive && !isFormulaActive && activeKeyPointIdx === -1;
 
               return (
                 <div 
@@ -438,16 +457,43 @@ export default function ConceptLesson({
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-1">
                       {/* Right Column: Narrative content and mathematical formula */}
                       <div className="lg:col-span-7 space-y-4 text-right">
-                        <p className={`text-xs sm:text-base leading-relaxed font-medium transition-colors duration-300 ${
-                          isCardActive && !isFormulaActive && activeKeyPointIdx === -1
-                            ? 'text-slate-900 dark:text-white font-bold'
-                            : 'text-slate-700 dark:text-slate-300'
-                        }`}>
-                          {section.content}
-                        </p>
+                        {/* Interactive Concept Paragraph (الفقرة الأولى - الشرح والمفهوم التفاعلي) */}
+                        <div 
+                          ref={el => { introRefs.current[sIdx] = el; }}
+                          onClick={() => {
+                            const seekIdx = getSeekIndex(sIdx, 'section');
+                            if (onStartSpeakingSentence) onStartSpeakingSentence(seekIdx);
+                          }}
+                          className={`p-3.5 sm:p-4 rounded-2xl transition-all duration-300 cursor-pointer text-right space-y-1.5 ${
+                            isIntroActive
+                              ? 'bg-[#39A9D0]/10 border border-[#39A9D0]/50 ring-1 ring-[#39A9D0]/40 shadow-[0_0_20px_rgba(57,169,208,0.22)] scale-[1.01]'
+                              : 'hover:bg-slate-100 dark:hover:bg-slate-800/50 border border-slate-200/50 dark:border-white/5 bg-slate-50/50 dark:bg-slate-900/30'
+                          }`}
+                          title="اضغط للاستماع لشرح هذا المفهوم الرياضي 🎧"
+                        >
+                          <div className="flex items-center justify-between text-[11px] sm:text-xs font-bold text-[#39A9D0]">
+                            <span className="flex items-center gap-1.5">
+                              <span>💡 المفهوم الرياضي الأساسي:</span>
+                              <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">(اضغط للاستماع)</span>
+                            </span>
+                            {isIntroActive && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#39A9D0] text-slate-950 text-[10px] font-black animate-pulse shadow-sm">
+                                🎙️ جاري شرح المفهوم...
+                              </span>
+                            )}
+                          </div>
+                          <p className={`text-xs sm:text-base leading-relaxed font-medium transition-colors duration-300 ${
+                            isIntroActive
+                              ? 'text-slate-900 dark:text-white font-bold'
+                              : 'text-slate-700 dark:text-slate-300'
+                          }`}>
+                            {section.content}
+                          </p>
+                        </div>
 
                         {section.formula && (
                           <div 
+                            ref={el => { formulaRefs.current[sIdx] = el; }}
                             onClick={() => {
                               const seekIdx = getSeekIndex(sIdx, 'formula');
                               if (onStartSpeakingSentence) onStartSpeakingSentence(seekIdx);
@@ -496,6 +542,7 @@ export default function ConceptLesson({
                             return (
                               <div 
                                 key={pIdx}
+                                ref={el => { keyPointRefs.current[`${sIdx}_${pIdx}`] = el; }}
                                 onClick={() => {
                                   if (onStartSpeakingSentence) onStartSpeakingSentence(pointSeekIdx);
                                 }}
@@ -527,16 +574,43 @@ export default function ConceptLesson({
                     </div>
                   ) : (
                     <div className="space-y-4 text-right">
-                      <p className={`text-xs sm:text-sm leading-relaxed font-medium transition-colors duration-300 ${
-                        isCardActive && !isFormulaActive && activeKeyPointIdx === -1
-                          ? 'text-slate-900 dark:text-white font-bold'
-                          : 'text-slate-700 dark:text-slate-300'
-                      }`}>
-                        {section.content}
-                      </p>
+                      {/* Interactive Concept Paragraph (الفقرة الأولى - الشرح والمفهوم التفاعلي) */}
+                      <div 
+                        ref={el => { introRefs.current[sIdx] = el; }}
+                        onClick={() => {
+                          const seekIdx = getSeekIndex(sIdx, 'section');
+                          if (onStartSpeakingSentence) onStartSpeakingSentence(seekIdx);
+                        }}
+                        className={`p-3.5 sm:p-4 rounded-2xl transition-all duration-300 cursor-pointer text-right space-y-1.5 ${
+                          isIntroActive
+                            ? 'bg-[#39A9D0]/10 border border-[#39A9D0]/50 ring-1 ring-[#39A9D0]/40 shadow-[0_0_20px_rgba(57,169,208,0.22)] scale-[1.01]'
+                            : 'hover:bg-slate-100 dark:hover:bg-slate-800/50 border border-slate-200/50 dark:border-white/5 bg-slate-50/50 dark:bg-slate-900/30'
+                        }`}
+                        title="اضغط للاستماع لشرح هذا المفهوم الرياضي 🎧"
+                      >
+                        <div className="flex items-center justify-between text-[11px] sm:text-xs font-bold text-[#39A9D0]">
+                          <span className="flex items-center gap-1.5">
+                            <span>💡 المفهوم الرياضي الأساسي:</span>
+                            <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">(اضغط للاستماع)</span>
+                          </span>
+                          {isIntroActive && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#39A9D0] text-slate-950 text-[10px] font-black animate-pulse shadow-sm">
+                              🎙️ جاري شرح المفهوم...
+                            </span>
+                          )}
+                        </div>
+                        <p className={`text-xs sm:text-sm leading-relaxed font-medium transition-colors duration-300 ${
+                          isIntroActive
+                            ? 'text-slate-900 dark:text-white font-bold'
+                            : 'text-slate-700 dark:text-slate-300'
+                        }`}>
+                          {section.content}
+                        </p>
+                      </div>
 
                       {section.formula && (
                         <div 
+                          ref={el => { formulaRefs.current[sIdx] = el; }}
                           onClick={() => {
                             const seekIdx = getSeekIndex(sIdx, 'formula');
                             if (onStartSpeakingSentence) onStartSpeakingSentence(seekIdx);
@@ -582,6 +656,7 @@ export default function ConceptLesson({
                             return (
                               <div 
                                 key={pIdx}
+                                ref={el => { keyPointRefs.current[`${sIdx}_${pIdx}`] = el; }}
                                 onClick={() => {
                                   if (onStartSpeakingSentence) onStartSpeakingSentence(pointSeekIdx);
                                 }}
