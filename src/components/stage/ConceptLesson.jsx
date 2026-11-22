@@ -39,7 +39,10 @@ export default function ConceptLesson({
   onRateChange,
   onStartSpeakingSentence,
   maxUnlockedLessonIdx,
-  onLockedLessonClick
+  onLockedLessonClick,
+  isSummaryActive = false,
+  isPracticeThinkingActive = false,
+  onSolutionRevealed
 }) {
   const [internalLessonIdx, setInternalLessonIdx] = useState(0);
   const [internalTabMode, setInternalTabMode] = useState('concepts'); // 'concepts' | 'practice'
@@ -205,6 +208,26 @@ export default function ConceptLesson({
   const introRefs = useRef([]);
   const formulaRefs = useRef([]);
   const keyPointRefs = useRef({});
+  const summaryRef = useRef(null);
+  const practiceProblemsRef = useRef(null);
+
+  // Auto-scroll to Lesson Summary when narration ends
+  useEffect(() => {
+    if (isSummaryActive && summaryRef.current) {
+      setTimeout(() => {
+        summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  }, [isSummaryActive]);
+
+  // Auto-scroll to Practice Problems when narrator says "فكر في حل..."
+  useEffect(() => {
+    if (isPracticeThinkingActive && practiceProblemsRef.current) {
+      setTimeout(() => {
+        practiceProblemsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  }, [isPracticeThinkingActive]);
 
   // Auto-scroll into view during live narration (especially crucial on mobile devices)
   useEffect(() => {
@@ -231,10 +254,16 @@ export default function ConceptLesson({
   }, [activeSectionIdx, isFormulaActive, activeKeyPointIdx, currentSentenceIdx, isPlayingAudio]);
 
   const toggleSolution = (key) => {
-    setRevealedSolutions(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+    setRevealedSolutions(prev => {
+      const willShow = !prev[key];
+      if (willShow && onSolutionRevealed) {
+        onSolutionRevealed();
+      }
+      return {
+        ...prev,
+        [key]: willShow
+      };
+    });
   };
 
   const localSpeakTimeoutRef = React.useRef(null);
@@ -752,11 +781,28 @@ export default function ConceptLesson({
 
           {/* 1. خلاصة الدرس والفكرة الأساسية أولاً تحت الشرح */}
           {currentLesson.summary && (
-            <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-cyan-500/10 dark:bg-cyan-500/10 light:bg-cyan-50 border border-cyan-500/30 flex items-start gap-3.5 shadow-sm" dir="rtl">
-              <Sparkles className="w-5 h-5 text-[#39A9D0] shrink-0 mt-0.5 animate-pulse" />
-              <div className="space-y-1 text-right flex-1">
-                <span className="text-xs sm:text-sm font-black text-[#39A9D0] block">خلاصة الدرس والفكرة الأساسية:</span>
-                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+            <div 
+              ref={summaryRef}
+              className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl border transition-all duration-500 flex items-start gap-3.5 shadow-sm ${
+                isSummaryActive
+                  ? 'bg-gradient-to-r from-[#39A9D0]/20 via-[#39A9D0]/10 to-transparent border-[#39A9D0] ring-2 ring-[#39A9D0]/80 shadow-[0_0_35px_rgba(57,169,208,0.35)] scale-[1.015]'
+                  : 'bg-cyan-500/10 dark:bg-cyan-500/10 light:bg-cyan-50 border-cyan-500/30'
+              }`} 
+              dir="rtl"
+            >
+              <Sparkles className={`w-5 h-5 text-[#39A9D0] shrink-0 mt-0.5 ${isSummaryActive ? 'animate-bounce drop-shadow-[0_0_8px_rgba(57,169,208,0.9)] scale-125' : 'animate-pulse'}`} />
+              <div className="space-y-1.5 text-right flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs sm:text-sm font-black text-[#39A9D0] block">خلاصة الدرس والفكرة الأساسية:</span>
+                  {isSummaryActive && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#39A9D0] text-slate-950 text-[10px] font-black animate-pulse shadow-sm shrink-0">
+                      💡 تم انتهاء الشرح - استوعب الخلاصة الآن
+                    </span>
+                  )}
+                </div>
+                <p className={`text-xs sm:text-sm leading-relaxed transition-colors duration-300 ${
+                  isSummaryActive ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-700 dark:text-slate-300 font-medium'
+                }`}>
                   {currentLesson.summary}
                 </p>
               </div>
@@ -772,12 +818,25 @@ export default function ConceptLesson({
       {lessonTabMode === 'practice' && (
         <div className="space-y-5 animate-fadeIn" dir="rtl">
           
-          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-right space-y-2">
+          <div 
+            ref={practiceProblemsRef}
+            className={`p-4 sm:p-5 rounded-2xl border transition-all duration-500 text-right space-y-2 ${
+              isPracticeThinkingActive
+                ? 'bg-amber-500/20 border-[#E5A91B] ring-2 ring-[#E5A91B]/80 shadow-[0_0_30px_rgba(229,169,27,0.35)] scale-[1.01]'
+                : 'bg-amber-500/10 border-amber-500/30'
+            }`}
+          >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <span className="text-xs font-black text-[#E5A91B] flex items-center gap-1.5">
                 <Calculator className="w-4 h-4" />
-                معمل حل المسائل والتدريبات النموذجية (منهج الوزارة 2027)
+                <span>معمل حل المسائل والتدريبات النموذجية (منهج الوزارة 2027)</span>
               </span>
+
+              {isPracticeThinkingActive && (
+                <span className="px-2.5 py-0.5 rounded-full bg-[#E5A91B] text-slate-950 text-[10px] font-black animate-pulse shadow-sm self-start sm:self-auto">
+                  🎯 فكر في حل المسألة بنفسك أولاً...
+                </span>
+              )}
 
               <button
                 onClick={() => {
@@ -787,6 +846,9 @@ export default function ConceptLesson({
                     nextState[`sec-${idx}`] = !allShown;
                   });
                   setRevealedSolutions(nextState);
+                  if (!allShown && onSolutionRevealed) {
+                    onSolutionRevealed();
+                  }
                 }}
                 className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-[#E5A91B] border border-amber-500/30 transition flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-sm"
               >
@@ -856,7 +918,11 @@ export default function ConceptLesson({
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-1">
                         {/* Right Column: Problem Statement & Mental Math Tip */}
                         <div className="lg:col-span-6 space-y-4 text-right">
-                          <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/5 dark:bg-slate-800/90 border border-amber-500/25 dark:border-white/10 space-y-3 text-right" dir="rtl">
+                          <div className={`p-4 sm:p-5 rounded-2xl border space-y-3 text-right transition-all duration-500 ${
+                            isPracticeThinkingActive
+                              ? 'bg-amber-500/15 border-[#E5A91B] ring-2 ring-[#E5A91B]/80 shadow-[0_0_25px_rgba(229,169,27,0.3)] scale-[1.01]'
+                              : 'bg-amber-500/5 dark:bg-slate-800/90 border-amber-500/25 dark:border-white/10'
+                          }`} dir="rtl">
                             <div className="flex items-center justify-between">
                               <span className="text-xs sm:text-sm font-black text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
                                 <HelpCircle className="w-4 h-4 text-[#E5A91B]" />
@@ -934,7 +1000,11 @@ export default function ConceptLesson({
                     ) : (
                       <>
                         {/* Context / Problem Statement */}
-                        <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-500/5 dark:bg-slate-800/90 border border-amber-500/25 dark:border-white/10 space-y-2 text-right" dir="rtl">
+                        <div className={`p-3.5 sm:p-4 rounded-2xl border space-y-2 text-right transition-all duration-500 ${
+                          isPracticeThinkingActive
+                            ? 'bg-amber-500/15 border-[#E5A91B] ring-2 ring-[#E5A91B]/80 shadow-[0_0_25px_rgba(229,169,27,0.3)] scale-[1.01]'
+                            : 'bg-amber-500/5 dark:bg-slate-800/90 border-amber-500/25 dark:border-white/10'
+                        }`} dir="rtl">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-black text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
                               <HelpCircle className="w-4 h-4 text-[#E5A91B]" />

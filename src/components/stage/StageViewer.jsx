@@ -46,6 +46,11 @@ export default function StageViewer({
   // 2*L + 1: Video Player
   // 2*L + 2: Final Quiz Station
   const [stepIndex, setStepIndex] = useState(0);
+  const stepIndexRef = useRef(0);
+  useEffect(() => {
+    stepIndexRef.current = stepIndex;
+  }, [stepIndex]);
+
   const [autoPlayKey, setAutoPlayKey] = useState(null);
 
   // Audio narration state shared with bottom bar & AudioNarrator
@@ -76,9 +81,15 @@ export default function StageViewer({
     return 0;
   });
 
+  const maxUnlockedStepRef = useRef(maxUnlockedStep);
+  useEffect(() => {
+    maxUnlockedStepRef.current = maxUnlockedStep;
+  }, [maxUnlockedStep]);
+
   // When stage or isCompleted changes, sync maxUnlockedStep
   useEffect(() => {
     if (isCompleted) {
+      maxUnlockedStepRef.current = totalSteps - 1;
       setMaxUnlockedStep(totalSteps - 1);
     } else {
       try {
@@ -86,23 +97,26 @@ export default function StageViewer({
         if (saved !== null) {
           const val = parseInt(saved, 10);
           if (!isNaN(val)) {
-            setMaxUnlockedStep(Math.max(0, Math.min(val, totalSteps - 1)));
+            const clamped = Math.max(0, Math.min(val, totalSteps - 1));
+            maxUnlockedStepRef.current = clamped;
+            setMaxUnlockedStep(clamped);
             return;
           }
         }
       } catch (e) {}
+      maxUnlockedStepRef.current = 0;
       setMaxUnlockedStep(0);
     }
   }, [stage.id, isCompleted, totalSteps]);
 
   const advanceUnlockedStep = (targetStep) => {
-    setMaxUnlockedStep(prev => {
-      const nextVal = Math.max(prev, targetStep);
-      try {
-        localStorage.setItem(storageKey, nextVal.toString());
-      } catch (e) {}
-      return nextVal;
-    });
+    const nextVal = Math.max(maxUnlockedStepRef.current, targetStep);
+    maxUnlockedStepRef.current = nextVal;
+    setMaxUnlockedStep(nextVal);
+    try {
+      localStorage.setItem(storageKey, nextVal.toString());
+    } catch (e) {}
+    return nextVal;
   };
 
   const [lockToast, setLockToast] = useState(null);
@@ -114,6 +128,54 @@ export default function StageViewer({
     toastTimeoutRef.current = setTimeout(() => {
       setLockToast(null);
     }, 3800);
+  };
+
+  // Summary reading delay in concepts mode
+  const [isSummaryActive, setIsSummaryActive] = useState(false);
+  const [summaryCountdown, setSummaryCountdown] = useState(0);
+  const summaryTimerRef = useRef(null);
+
+  // Practice narrator synchronization ("فكر في حل...")
+  const [isPracticeThinkingActive, setIsPracticeThinkingActive] = useState(false);
+  const practiceThinkingTimerRef = useRef(null);
+
+  // Practice solution gating
+  const [hasRevealedSolution, setHasRevealedSolution] = useState(false);
+  const [solutionCountdown, setSolutionCountdown] = useState(0);
+  const solutionTimerRef = useRef(null);
+
+  const triggerSummaryReading = () => {
+    setIsSummaryActive(true);
+    setSummaryCountdown(4); // 4-second reading window
+    if (summaryTimerRef.current) clearInterval(summaryTimerRef.current);
+    summaryTimerRef.current = setInterval(() => {
+      setSummaryCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(summaryTimerRef.current);
+          summaryTimerRef.current = null;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleSolutionRevealed = () => {
+    if (!hasRevealedSolution) {
+      setHasRevealedSolution(true);
+      setSolutionCountdown(3); // 3-second delay as requested!
+      if (solutionTimerRef.current) clearInterval(solutionTimerRef.current);
+      solutionTimerRef.current = setInterval(() => {
+        setSolutionCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(solutionTimerRef.current);
+            solutionTimerRef.current = null;
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
   };
 
   // Initialize Audio player, SpeechSynthesis, and cleanup on unmount
@@ -140,6 +202,14 @@ export default function StageViewer({
       setIsPlayingAudio(false);
       setIsPausedAudio(false);
       setCurrentSentenceIdx(-1);
+      // Auto-unlock the next step upon full narration completion
+      advanceUnlockedStep(stepIndexRef.current + 1);
+
+      // Trigger summary reading delay if in concepts mode
+      const cur = getStepDetails(stepIndexRef.current);
+      if (cur.type === 'lesson' && cur.subTab === 'concepts') {
+        triggerSummaryReading();
+      }
     };
 
     const handlePause = () => {
@@ -162,6 +232,18 @@ export default function StageViewer({
       if (speakTimeoutRef.current) {
         clearTimeout(speakTimeoutRef.current);
         speakTimeoutRef.current = null;
+      }
+      if (summaryTimerRef.current) {
+        clearInterval(summaryTimerRef.current);
+        summaryTimerRef.current = null;
+      }
+      if (solutionTimerRef.current) {
+        clearInterval(solutionTimerRef.current);
+        solutionTimerRef.current = null;
+      }
+      if (practiceThinkingTimerRef.current) {
+        clearTimeout(practiceThinkingTimerRef.current);
+        practiceThinkingTimerRef.current = null;
       }
       if (synthRef.current) {
         try {
@@ -414,6 +496,21 @@ export default function StageViewer({
 
     if (!textToSpeak) return;
 
+    // If speaking in practice tab: schedule thinking highlight when narrator says "فكر في حل..."
+    if (targetStep.type === 'lesson' && targetStep.subTab === 'practice') {
+      setIsPracticeThinkingActive(false);
+      if (practiceThinkingTimerRef.current) clearTimeout(practiceThinkingTimerRef.current);
+      practiceThinkingTimerRef.current = setTimeout(() => {
+        setIsPracticeThinkingActive(true);
+      }, 2400);
+    } else {
+      setIsPracticeThinkingActive(false);
+      if (practiceThinkingTimerRef.current) {
+        clearTimeout(practiceThinkingTimerRef.current);
+        practiceThinkingTimerRef.current = null;
+      }
+    }
+
     // Short 60ms delay before speak to let the browser audio thread fully purge the cancelled queue
     speakTimeoutRef.current = setTimeout(() => {
       try {
@@ -435,10 +532,24 @@ export default function StageViewer({
           }
         };
 
+        if (targetStep.type === 'lesson' && targetStep.subTab === 'practice') {
+          utterance.onboundary = (e) => {
+            if (e.name === 'word' && textToSpeak.slice(e.charIndex, e.charIndex + 12).includes('فكر')) {
+              setIsPracticeThinkingActive(true);
+            }
+          };
+        }
+
         utterance.onend = () => {
           setIsPlayingAudio(false);
           setIsPausedAudio(false);
           setCurrentSentenceIdx(-1);
+          advanceUnlockedStep(stepIndexRef.current + 1);
+
+          const cur = getStepDetails(stepIndexRef.current);
+          if (cur.type === 'lesson' && cur.subTab === 'concepts') {
+            triggerSummaryReading();
+          }
         };
 
         utterance.onerror = () => {
@@ -524,9 +635,10 @@ export default function StageViewer({
   };
 
   // Navigate to specific step with auto-play and scroll to start of explanation
-  const goToStep = (newStep, triggerPlay = true) => {
+  const goToStep = (newStep, triggerPlay = true, overrideMax = null) => {
+    const effectiveMax = overrideMax !== null ? overrideMax : maxUnlockedStepRef.current;
     // Strict Sequential Progression Check: prevent jumping ahead to locked steps
-    if (!isCompleted && newStep > maxUnlockedStep) {
+    if (!isCompleted && newStep > effectiveMax) {
       const lessonSteps = lessonCount * 2;
       if (newStep >= lessonSteps + 2) {
         showLockToast("اختبار المرحلة مقفل! يجب إنهاء جميع دروس المرحلة والمعمل البصري والفيديو التفاعلي أولاً بالترتيب.", "اختبار المرحلة مقفل 🔒");
@@ -538,6 +650,25 @@ export default function StageViewer({
         showLockToast("هذا الدرس مقفل! تابع دراسة الدروس وحل المسائل بالترتيب الإلزامي أولاً.", "درس مقفل 🔒");
       }
       return;
+    }
+
+    // Reset reading & practice countdowns when changing steps
+    setIsSummaryActive(false);
+    setSummaryCountdown(0);
+    if (summaryTimerRef.current) {
+      clearInterval(summaryTimerRef.current);
+      summaryTimerRef.current = null;
+    }
+    setHasRevealedSolution(false);
+    setSolutionCountdown(0);
+    if (solutionTimerRef.current) {
+      clearInterval(solutionTimerRef.current);
+      solutionTimerRef.current = null;
+    }
+    setIsPracticeThinkingActive(false);
+    if (practiceThinkingTimerRef.current) {
+      clearTimeout(practiceThinkingTimerRef.current);
+      practiceThinkingTimerRef.current = null;
     }
 
     stopAudio();
@@ -560,11 +691,30 @@ export default function StageViewer({
 
   // Next Button handler with strict quiz-completion gating & step-by-step unlock
   const handleNext = () => {
+    // If student is in summary reading countdown (concepts mode)
+    if (currentStep.type === 'lesson' && currentStep.subTab === 'concepts' && summaryCountdown > 0) {
+      showLockToast("استوعب خلاصة الدرس والفكرة الأساسية أولاً! سيتفاعل الزر تلقائياً خلال لحظات 💡", "قراءة الخلاصة 📖");
+      return;
+    }
+
+    // If student is in practice tab and hasn't revealed the solution yet
+    if (currentStep.type === 'lesson' && currentStep.subTab === 'practice' && !hasRevealedSolution) {
+      showLockToast("اضغط على زر 'إظهار خطوات الحل والتحقق' في المسألة أولاً لمقارنة حلك النموذجي 💡", "أظهر الحل أولاً 🔓");
+      document.querySelector('[title*="إظهار"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    // If student is in practice tab and 3-second solution inspection countdown is running
+    if (currentStep.type === 'lesson' && currentStep.subTab === 'practice' && hasRevealedSolution && solutionCountdown > 0) {
+      showLockToast("تفحص خطوات الحل والناتج أولاً! سيتفاعل الزر خلال 3 ثوانٍ 🎯", "مراجعة الحل ⏳");
+      return;
+    }
+
     stopAudio();
     if (stepIndex < totalSteps - 1) {
       const nextIndex = stepIndex + 1;
-      advanceUnlockedStep(nextIndex);
-      goToStep(nextIndex, true);
+      const updatedMax = advanceUnlockedStep(nextIndex);
+      goToStep(nextIndex, true, updatedMax);
     } else {
       // Reached the end of stage (the Quiz step)
       if (!isCompleted) {
@@ -833,6 +983,9 @@ export default function StageViewer({
             onLockedLessonClick={(idx) => {
               showLockToast(`الدرس ${idx + 1} مقفل! يجب دراسة الدرس السابق وحل مسائله بالترتيب الإلزامي أولاً.`, "درس مقفل 🔒");
             }}
+            isSummaryActive={isSummaryActive}
+            isPracticeThinkingActive={isPracticeThinkingActive}
+            onSolutionRevealed={handleSolutionRevealed}
           />
         )}
 
@@ -966,25 +1119,61 @@ export default function StageViewer({
             </div>
           </div>
 
-          {/* Next Step Button with Auto-Play Narration & Quiz-Gating */}
-          <button
-            onClick={handleNext}
-            className="px-2.5 sm:px-4 py-1.5 sm:py-2.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-[#39A9D0] to-[#E5A91B] text-slate-950 font-black text-xs sm:text-sm shadow-glow-primary hover:brightness-110 active:scale-95 transition flex items-center gap-1 sm:gap-1.5 shrink-0"
-            title="المحطة التالية"
-          >
-            <span className="truncate max-w-[75px] xs:max-w-[110px] sm:max-w-none text-[11px] sm:text-xs">
-              {stepIndex < totalSteps - 1 ? (
-                <>التالي: {nextStep?.shortBadge}</>
-              ) : !isCompleted ? (
-                <>الاختبار 🎯</>
-              ) : hasNext ? (
-                <>التالية 🚀</>
-              ) : (
-                <>النهائي 🏆</>
-              )}
-            </span>
-            <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-          </button>
+          {/* Next Step Button with Auto-Play Narration, Summary Reading & Solution Gating */}
+          {(() => {
+            const isConceptReading = currentStep.type === 'lesson' && currentStep.subTab === 'concepts' && summaryCountdown > 0;
+            const isPracticeGated = currentStep.type === 'lesson' && currentStep.subTab === 'practice' && !hasRevealedSolution;
+            const isSolutionCoolingDown = currentStep.type === 'lesson' && currentStep.subTab === 'practice' && hasRevealedSolution && solutionCountdown > 0;
+            const isNextDisabled = isConceptReading || isSolutionCoolingDown;
+
+            return (
+              <button
+                onClick={handleNext}
+                disabled={isNextDisabled}
+                className={`px-2.5 sm:px-4 py-1.5 sm:py-2.5 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm transition flex items-center gap-1 sm:gap-1.5 shrink-0 ${
+                  isConceptReading
+                    ? 'bg-cyan-500/20 text-[#39A9D0] border border-[#39A9D0]/50 cursor-wait animate-pulse'
+                    : isPracticeGated
+                    ? 'bg-amber-500/15 text-[#E5A91B] border border-[#E5A91B]/40 hover:bg-amber-500/25 active:scale-95'
+                    : isSolutionCoolingDown
+                    ? 'bg-amber-500/25 text-amber-200 border border-amber-400/50 cursor-wait animate-pulse'
+                    : isSummaryActive && summaryCountdown === 0
+                    ? 'bg-gradient-to-r from-[#39A9D0] to-emerald-400 text-slate-950 shadow-glow-primary scale-105 animate-pulse'
+                    : hasRevealedSolution && solutionCountdown === 0
+                    ? 'bg-gradient-to-r from-[#E5A91B] to-emerald-400 text-slate-950 shadow-glow-gold scale-105 animate-pulse'
+                    : 'bg-gradient-to-r from-[#39A9D0] to-[#E5A91B] text-slate-950 shadow-glow-primary hover:brightness-110 active:scale-95'
+                }`}
+                title={
+                  isConceptReading
+                    ? "اقرأ خلاصة الدرس والفكرة الأساسية أولاً"
+                    : isPracticeGated
+                    ? "اضغط على زر إظهار الحل أولاً لتفعيل التالي"
+                    : isSolutionCoolingDown
+                    ? "تفحص خطوات الحل والناتج النموذجي"
+                    : "المحطة التالية"
+                }
+              >
+                <span className="truncate max-w-[85px] xs:max-w-[130px] sm:max-w-none text-[11px] sm:text-xs">
+                  {isConceptReading ? (
+                    <>خلاصة الدرس ({summaryCountdown}ث) 📖</>
+                  ) : isSolutionCoolingDown ? (
+                    <>تفحص الحل ({solutionCountdown}ث) ⏳</>
+                  ) : isPracticeGated ? (
+                    <>أظهر الحل أولاً 🔓</>
+                  ) : stepIndex < totalSteps - 1 ? (
+                    <>التالي: {nextStep?.shortBadge} 🚀</>
+                  ) : !isCompleted ? (
+                    <>الاختبار 🎯</>
+                  ) : hasNext ? (
+                    <>التالية 🚀</>
+                  ) : (
+                    <>النهائي 🏆</>
+                  )}
+                </span>
+                <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              </button>
+            );
+          })()}
 
         </div>
       </div>
