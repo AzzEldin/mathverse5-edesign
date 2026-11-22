@@ -776,35 +776,40 @@ export default function StageViewer({
 
   // Next Button handler with strict quiz-completion gating & step-by-step unlock
   const handleNext = () => {
-    // 1. Mandatory 5-second listening check for lessons
-    if (currentStep.type === 'lesson' && !isNarrationCompletedRef.current && listenSecondsRef.current < 5) {
-      showLockToast("عليك الاستماع إلى الشرح لمدة لا تقل عن 5 ثوانٍ أولاً قبل التخطي! 🎧", "استمع للشرح أولاً ⏳");
-      return;
-    }
+    const isAlreadyPassed = isCompleted || (stepIndex < maxUnlockedStepRef.current);
 
-    // 2. Skip confirmation modal if student clicks Next before narration finishes
-    if (currentStep.type === 'lesson' && !isNarrationCompletedRef.current) {
-      setShowSkipConfirmModal(true);
-      return;
-    }
+    // إذا تخطى الطالب المحطة أو المرحلة بالفعل، يتم إلغاء كافة شروط التخطي فوراً
+    if (!isAlreadyPassed) {
+      // 1. Mandatory 5-second listening check for lessons
+      if (currentStep.type === 'lesson' && !isNarrationCompletedRef.current && listenSecondsRef.current < 5) {
+        showLockToast("عليك الاستماع إلى الشرح لمدة لا تقل عن 5 ثوانٍ أولاً قبل التخطي! 🎧", "استمع للشرح أولاً ⏳");
+        return;
+      }
 
-    // 3. If student is in summary reading countdown (concepts mode)
-    if (currentStep.type === 'lesson' && currentStep.subTab === 'concepts' && summaryCountdown > 0) {
-      showLockToast("استوعب خلاصة الدرس والفكرة الأساسية أولاً! سيتفاعل الزر تلقائياً خلال لحظات 💡", "قراءة الخلاصة 📖");
-      return;
-    }
+      // 2. Skip confirmation modal if student clicks Next before narration finishes
+      if (currentStep.type === 'lesson' && !isNarrationCompletedRef.current) {
+        setShowSkipConfirmModal(true);
+        return;
+      }
 
-    // 4. If student is in practice tab and hasn't revealed the solution yet
-    if (currentStep.type === 'lesson' && currentStep.subTab === 'practice' && !hasRevealedSolution) {
-      showLockToast("اضغط على زر 'إظهار خطوات الحل والتحقق' في المسألة أولاً لمقارنة حلك النموذجي 💡", "أظهر الحل أولاً 🔓");
-      document.querySelector('[title*="إظهار"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
+      // 3. If student is in summary reading countdown (concepts mode)
+      if (currentStep.type === 'lesson' && currentStep.subTab === 'concepts' && summaryCountdown > 0) {
+        showLockToast("استوعب خلاصة الدرس والفكرة الأساسية أولاً! سيتفاعل الزر تلقائياً خلال لحظات 💡", "قراءة الخلاصة 📖");
+        return;
+      }
 
-    // 5. If student is in practice tab and 3-second solution inspection countdown is running
-    if (currentStep.type === 'lesson' && currentStep.subTab === 'practice' && hasRevealedSolution && solutionCountdown > 0) {
-      showLockToast("تفحص خطوات الحل والناتج أولاً! سيتفاعل الزر خلال 3 ثوانٍ 🎯", "مراجعة الحل ⏳");
-      return;
+      // 4. If student is in practice tab and hasn't revealed the solution yet
+      if (currentStep.type === 'lesson' && currentStep.subTab === 'practice' && !hasRevealedSolution) {
+        showLockToast("اضغط على زر 'إظهار خطوات الحل والتحقق' في المسألة أولاً لمقارنة حلك النموذجي 💡", "أظهر الحل أولاً 🔓");
+        document.querySelector('[title*="إظهار"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      // 5. If student is in practice tab and 3-second solution inspection countdown is running
+      if (currentStep.type === 'lesson' && currentStep.subTab === 'practice' && hasRevealedSolution && solutionCountdown > 0) {
+        showLockToast("تفحص خطوات الحل والناتج أولاً! سيتفاعل الزر خلال 3 ثوانٍ 🎯", "مراجعة الحل ⏳");
+        return;
+      }
     }
 
     advanceAndGoNext();
@@ -1213,10 +1218,12 @@ export default function StageViewer({
 
           {/* Next Step Button with Auto-Play Narration, Summary Reading, 5s Mandatory Listening & Solution Gating */}
           {(() => {
-            const isListenLocked = currentStep.type === 'lesson' && !isNarrationCompleted && listenSeconds < 5;
-            const isConceptReading = currentStep.type === 'lesson' && currentStep.subTab === 'concepts' && summaryCountdown > 0;
-            const isPracticeGated = currentStep.type === 'lesson' && currentStep.subTab === 'practice' && !hasRevealedSolution;
-            const isSolutionCoolingDown = currentStep.type === 'lesson' && currentStep.subTab === 'practice' && hasRevealedSolution && solutionCountdown > 0;
+            const isAlreadyPassed = isCompleted || stepIndex < maxUnlockedStep;
+
+            const isListenLocked = !isAlreadyPassed && currentStep.type === 'lesson' && !isNarrationCompleted && listenSeconds < 5;
+            const isConceptReading = !isAlreadyPassed && currentStep.type === 'lesson' && currentStep.subTab === 'concepts' && summaryCountdown > 0;
+            const isPracticeGated = !isAlreadyPassed && currentStep.type === 'lesson' && currentStep.subTab === 'practice' && !hasRevealedSolution;
+            const isSolutionCoolingDown = !isAlreadyPassed && currentStep.type === 'lesson' && currentStep.subTab === 'practice' && hasRevealedSolution && solutionCountdown > 0;
             const isNextDisabled = isConceptReading || isSolutionCoolingDown;
 
             return (
