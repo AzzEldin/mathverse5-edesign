@@ -10,13 +10,16 @@ import {
   computePlatformAnalytics,
   calculateDaysBetween,
   fetchStudentsFromGoogleSheets,
-  GOOGLE_SHEET_URL
+  GOOGLE_SHEET_URL,
+  getStudentAvgScore,
+  compareStudentsByScore
 } from '../../utils/analyticsTracker';
 
 export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark', studentProfile = null }) {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'students' | 'stages'
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'completed' | 'in_progress'
+  const [sortBy, setSortBy] = useState('score_desc'); // 'score_desc' (الافتراضي: أعلى درجات) | 'completed' | 'newest' | 'name'
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState(null);
@@ -61,9 +64,9 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
     return computePlatformAnalytics();
   }, [refreshTrigger]);
 
-  // تصفية الطلاب
+  // تصفية وفرز الطلاب
   const filteredStudents = useMemo(() => {
-    return (analytics.studentsList || []).filter(student => {
+    const list = (analytics.studentsList || []).filter(student => {
       const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (student.school && student.school.toLowerCase().includes(searchQuery.toLowerCase()));
       
@@ -73,7 +76,28 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
       if (statusFilter === 'in_progress') return matchesSearch && !isCompleted;
       return matchesSearch;
     });
-  }, [analytics.studentsList, searchQuery, statusFilter]);
+
+    return [...list].sort((a, b) => {
+      if (sortBy === 'score_desc') {
+        return compareStudentsByScore(a, b);
+      }
+      if (sortBy === 'completed') {
+        const compA = (a.completedStages || []).length;
+        const compB = (b.completedStages || []).length;
+        if (compB !== compA) return compB - compA;
+        return compareStudentsByScore(a, b);
+      }
+      if (sortBy === 'newest') {
+        const dateA = new Date(a.registeredAt || 0).getTime();
+        const dateB = new Date(b.registeredAt || 0).getTime();
+        return dateB - dateA;
+      }
+      if (sortBy === 'name') {
+        return (a.name || '').localeCompare(b.name || '', 'ar');
+      }
+      return compareStudentsByScore(a, b);
+    });
+  }, [analytics.studentsList, searchQuery, statusFilter, sortBy]);
 
   // استخراج سجل الطالب الحالي (المستخدم)
   const currentStudentRecord = useMemo(() => {
@@ -339,34 +363,49 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* فلترة الحالة */}
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 focus:outline-none"
+                    className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 focus:outline-none font-bold"
                   >
                     <option value="all">كافة الطلاب ({analytics.totalStudents})</option>
                     <option value="completed">أتموا المنهج فقط ({analytics.completedCount})</option>
                     <option value="in_progress">قيد التعلم ({analytics.totalStudents - analytics.completedCount})</option>
+                  </select>
+
+                  {/* فرز القائمة */}
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 focus:outline-none font-bold text-[#39A9D0]"
+                    title="ترتيب قائمة الطلاب"
+                  >
+                    <option value="score_desc">🏆 أعلى متوسط درجات (افتراضي)</option>
+                    <option value="completed">📚 الأكثر إنجازاً للمراحل</option>
+                    <option value="newest">🕒 الأحدث تسجيلاً</option>
+                    <option value="name">🔤 أبجدياً بالاسم</option>
                   </select>
                 </div>
               </div>
 
               {/* Status and count indicator */}
               <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold px-1">
-                <span>عرض {filteredStudents.length} من أصل {analytics.totalStudents} طالباً في مجتمع MathVerse 5</span>
+                <span>عرض {filteredStudents.length} من أصل {analytics.totalStudents} طالباً في مجتمع MathVerse 5 (مرتبين تنازلياً حسب أعلى متوسط درجات)</span>
                 <span className="text-emerald-500 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                   مجتمع تعليمي نشط
                 </span>
               </div>
 
-              {/* Students Table (عمود عرض سجل المشاهدات الفردي ملغي لحماية الخصوصية) */}
+              {/* Students Table */}
               <div className="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full text-right text-xs">
                     <thead className="bg-slate-50 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-white/10">
                       <tr>
+                        <th className="p-3 text-center w-12 font-black">#</th>
                         <th className="p-3">الطالب</th>
                         <th className="p-3">تاريخ التسجيل</th>
                         <th className="p-3">المراحل المنجزة</th>
@@ -378,19 +417,18 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
                     <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                       {filteredStudents.length === 0 ? (
                         <tr>
-                          <td colSpan="6" className="p-6 text-center text-slate-400">
+                          <td colSpan="7" className="p-6 text-center text-slate-400">
                             لا يوجد طلاب مطابقين لمعايير البحث.
                           </td>
                         </tr>
                       ) : (
-                        filteredStudents.map((student) => {
+                        filteredStudents.map((student, index) => {
                           const isCompleted = Boolean(student.completedAt) || (student.completedStages && student.completedStages.length === 6);
                           const daysTaken = student.completedAt
                             ? (student.daysToComplete || calculateDaysBetween(student.registeredAt, student.completedAt))
                             : calculateDaysBetween(student.registeredAt, new Date());
                           
-                          const scores = Object.values(student.quizScores || {});
-                          const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+                          const avgScore = getStudentAvgScore(student);
                           const completedCount = (student.completedStages || []).length;
                           const isCurrent = studentProfile?.name && student.name.trim().toLowerCase() === studentProfile.name.trim().toLowerCase();
 
@@ -399,6 +437,14 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
                               key={student.id} 
                               className={`transition ${isCurrent ? 'bg-[#39A9D0]/10 hover:bg-[#39A9D0]/15 font-semibold' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'}`}
                             >
+                              {/* الترتيب والميداليات للثلاثة الأوائل */}
+                              <td className="p-3 text-center font-math font-black text-xs">
+                                {index === 0 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400/20 text-amber-500 border border-amber-400/40 text-sm" title="المركز الأول 🥇">🥇</span>}
+                                {index === 1 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-300/20 text-slate-400 border border-slate-300/40 text-sm" title="المركز الثاني 🥈">🥈</span>}
+                                {index === 2 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-700/20 text-amber-600 border border-amber-600/40 text-sm" title="المركز الثالث 🥉">🥉</span>}
+                                {index > 2 && <span className="text-slate-400 dark:text-slate-500 font-bold">{index + 1}</span>}
+                              </td>
+
                               {/* Student name & avatar */}
                               <td className="p-3">
                                 <div className="flex items-center gap-2">

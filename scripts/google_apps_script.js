@@ -76,6 +76,14 @@ function doGet(e) {
       });
     }
 
+    // فرز الطلاب تنازلياً حسب أعلى متوسط درجات
+    students.sort((a, b) => {
+      const scoreA = Number(a.avgQuizScore) || 0;
+      const scoreB = Number(b.avgQuizScore) || 0;
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      return (b.completedStagesCount || 0) - (a.completedStagesCount || 0);
+    });
+
     return ContentService
       .createTextOutput(JSON.stringify({ 
         status: "success", 
@@ -88,6 +96,10 @@ function doGet(e) {
     return ContentService
       .createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    try {
+      lock.releaseLock();
+    } catch (e) {}
   }
 }
 
@@ -95,7 +107,11 @@ function doGet(e) {
  * دالة POST: مخصصة لاستقبال تسجيلات الطلاب واجتياز الاختبارات وتخزينها في الشيت
  */
 function doPost(e) {
+  const lock = LockService.getScriptLock();
   try {
+    // قفل متزامن لمدة تصل إلى 20 ثانية لمنع تكرار السجلات عند وصول طلبين معاً
+    lock.waitLock(20000);
+
     let payload = {};
     if (e.postData && e.postData.contents) {
       payload = JSON.parse(e.postData.contents);
@@ -190,5 +206,9 @@ function doPost(e) {
     return ContentService
       .createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    try {
+      lock.releaseLock();
+    } catch (e) {}
   }
 }

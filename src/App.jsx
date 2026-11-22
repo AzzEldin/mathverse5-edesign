@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/layout/Header.jsx';
 import Footer from './components/layout/Footer.jsx';
 import StageRoadmap from './components/navigation/StageRoadmap.jsx';
@@ -54,6 +54,8 @@ export default function App() {
     return null;
   });
 
+  const hasInitialMountedRef = useRef(false);
+
   // Onboarding sequence on first visit: Guide first, then Registration if no profile
   useEffect(() => {
     try {
@@ -62,8 +64,9 @@ export default function App() {
         setIsGuideOpen(true);
       } else if (!studentProfile) {
         setIsRegisterOpen(true);
-      } else {
-        // مزامنة حالة الطالب الحالية مع قاعدة البيانات السحابية عند بدء التشغيل
+      } else if (!hasInitialMountedRef.current) {
+        // مزامنة حالة الطالب الحالية مع قاعدة البيانات السحابية عند بدء التشغيل فقط للطلاب المسجلين مسبقاً
+        hasInitialMountedRef.current = true;
         recordStudentUpdate(studentProfile, userProgress, 'تسجيل دخول نشط');
       }
     } catch (e) {

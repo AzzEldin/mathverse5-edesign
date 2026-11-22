@@ -252,6 +252,7 @@
             <table class="w-full text-right text-xs">
               <thead class="bg-slate-950/70 text-slate-400 font-bold border-b border-white/10">
                 <tr>
+                  <th class="p-3 text-center w-12 font-black">#</th>
                   <th class="p-3">الطالب</th>
                   <th class="p-3">تاريخ التسجيل</th>
                   <th class="p-3">المراحل المكتملة</th>
@@ -263,7 +264,7 @@
               </thead>
               <tbody id="studentsTbody" class="divide-y divide-white/5">
                 <tr>
-                  <td colspan="7" class="p-8 text-center text-slate-400">
+                  <td colspan="8" class="p-8 text-center text-slate-400">
                     جاري تحميل سجلات الطلاب من قاعدة البيانات...
                   </td>
                 </tr>
@@ -476,13 +477,26 @@
         return matchesQuery;
       });
 
+      // ترتيب تنازلي دائم حسب أعلى متوسط درجات
+      filtered.sort((a, b) => {
+        const getAvg = (s) => {
+          if (typeof s.avgQuizScore === 'number' && s.avgQuizScore > 0) return s.avgQuizScore;
+          const sc = Object.values(s.quizScores || {}).filter(v => typeof v === 'number' && v > 0);
+          return sc.length > 0 ? Math.round(sc.reduce((x, y) => x + y, 0) / sc.length) : 0;
+        };
+        const scoreA = getAvg(a);
+        const scoreB = getAvg(b);
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return (b.completedStages || []).length - (a.completedStages || []).length;
+      });
+
       const tbody = document.getElementById('studentsTbody');
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">لا توجد سجلات مطابقة.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-500">لا توجد سجلات مطابقة.</td></tr>`;
         return;
       }
 
-      tbody.innerHTML = filtered.map(s => {
+      tbody.innerHTML = filtered.map((s, idx) => {
         const isComp = Boolean(s.completedAt) || (s.completedStages && s.completedStages.length === 6);
         const days = isComp ? (s.daysToComplete || 1) : '-';
         const compCount = (s.completedStages || []).length;
@@ -501,6 +515,12 @@
 
         return `
           <tr class="hover:bg-slate-800/40 transition">
+            <td class="p-3 text-center font-math font-black text-xs">
+              ${idx === 0 ? '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400/20 text-amber-400 border border-amber-400/30 text-sm">🥇</span>' : 
+                idx === 1 ? '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-300/20 text-slate-300 border border-slate-300/30 text-sm">🥈</span>' : 
+                idx === 2 ? '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-700/20 text-amber-600 border border-amber-600/30 text-sm">🥉</span>' : 
+                `<span class="text-slate-500 font-bold">${idx + 1}</span>`}
+            </td>
             <td class="p-3">
               <div class="flex items-center gap-2">
                 <span class="text-xl">${s.avatar || '🚀'}</span>

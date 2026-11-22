@@ -26,18 +26,53 @@ export function calculateDaysBetween(startDate, endDate = new Date()) {
 export const DEFAULT_DEMO_STUDENTS = MOCK_STUDENTS_100;
 
 /**
+ * حساب متوسط درجات الطالب بدقة
+ */
+export function getStudentAvgScore(student) {
+  if (!student) return 0;
+  if (typeof student.avgQuizScore === 'number' && student.avgQuizScore > 0) {
+    return student.avgQuizScore;
+  }
+  const scores = Object.values(student.quizScores || {}).filter(v => typeof v === 'number' && v > 0);
+  return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+}
+
+/**
+ * دالة مقارنة للترتيب التنازلي حسب أعلى متوسط درجات
+ */
+export function compareStudentsByScore(a, b) {
+  const scoreA = getStudentAvgScore(a);
+  const scoreB = getStudentAvgScore(b);
+  if (scoreB !== scoreA) {
+    return scoreB - scoreA; // من الأعلى درجات إلى الأقل
+  }
+  // في حال تساوي المتوسط، الأولوية للأكثر إنجازاً للمراحل
+  const stagesA = (a.completedStages || []).length;
+  const stagesB = (b.completedStages || []).length;
+  if (stagesB !== stagesA) {
+    return stagesB - stagesA;
+  }
+  // في حال التساوي، الأقدم تسجيلاً أو أبجدياً
+  return (a.name || '').localeCompare(b.name || '', 'ar');
+}
+
+/**
  * دمج السجلات الحقيقية مع العينات الـ 100
- * يضمن ظهور الطلاب الحقيقيين أولاً، مع بقاء المجتمع ثرياً ونشطاً بـ 100 عينة
+ * مرتبة حسب أعلى متوسط درجات
  */
 export function mergeWithMockStudents(liveStudents = []) {
   if (!Array.isArray(liveStudents) || liveStudents.length === 0) {
-    return MOCK_STUDENTS_100;
+    return [...MOCK_STUDENTS_100].sort(compareStudentsByScore);
   }
   
   const realNames = new Set(liveStudents.map(s => (s.name || '').trim().toLowerCase()));
   const filteredMocks = MOCK_STUDENTS_100.filter(m => !realNames.has(m.name.trim().toLowerCase()));
   
-  return [...liveStudents, ...filteredMocks];
+  // فرز الطلاب الحقيقيين أولاً حسب أعلى درجات، ثم فرز عينات المجتمع أيضاً حسب أعلى درجات
+  const sortedLive = [...liveStudents].sort(compareStudentsByScore);
+  const sortedMocks = [...filteredMocks].sort(compareStudentsByScore);
+  
+  return [...sortedLive, ...sortedMocks];
 }
 
 /**
