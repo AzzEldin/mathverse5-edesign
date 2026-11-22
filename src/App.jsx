@@ -54,9 +54,20 @@ export default function App() {
     return null;
   });
 
-  const hasInitialMountedRef = useRef(false);
+  // 1. Initial startup sync: ONLY runs once on initial page load if returning student has profile
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(PROFILE_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.name) {
+          recordStudentUpdate(parsed, userProgress, 'تسجيل دخول نشط');
+        }
+      }
+    } catch (e) {}
+  }, []); // Run ONLY once on mount, NEVER on registration!
 
-  // Onboarding sequence on first visit: Guide first, then Registration if no profile
+  // 2. Onboarding sequence on first visit: Guide first, then Registration if no profile
   useEffect(() => {
     try {
       const guideViewed = localStorage.getItem('mathverse_guide_viewed');
@@ -64,10 +75,6 @@ export default function App() {
         setIsGuideOpen(true);
       } else if (!studentProfile) {
         setIsRegisterOpen(true);
-      } else if (!hasInitialMountedRef.current) {
-        // مزامنة حالة الطالب الحالية مع قاعدة البيانات السحابية عند بدء التشغيل فقط للطلاب المسجلين مسبقاً
-        hasInitialMountedRef.current = true;
-        recordStudentUpdate(studentProfile, userProgress, 'تسجيل دخول نشط');
       }
     } catch (e) {
       if (!studentProfile) setIsRegisterOpen(true);

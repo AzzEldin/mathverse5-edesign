@@ -96,11 +96,22 @@ function doGet(e) {
     return ContentService
       .createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
-  } finally {
-    try {
-      lock.releaseLock();
-    } catch (e) {}
   }
+}
+
+/**
+ * دالة تطبيع ومقارنة النصوص العربية بدقة لمنع تكرار الأسماء باختلاف الهمزات أو المسافات
+ */
+function normalizeArabic(text) {
+  if (!text) return "";
+  return String(text)
+    .trim()
+    .toLowerCase()
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/[\u064B-\u065F\u0670]/g, "") // إزالة التشكيل
+    .replace(/\s+/g, " "); // توحيد المسافات المتعددة
 }
 
 /**
@@ -109,8 +120,8 @@ function doGet(e) {
 function doPost(e) {
   const lock = LockService.getScriptLock();
   try {
-    // قفل متزامن لمدة تصل إلى 20 ثانية لمنع تكرار السجلات عند وصول طلبين معاً
-    lock.waitLock(20000);
+    // قفل متزامن لمدة تصل إلى 25 ثانية لمنع أي تكرار متزامن
+    lock.waitLock(25000);
 
     let payload = {};
     if (e.postData && e.postData.contents) {
@@ -130,7 +141,7 @@ function doPost(e) {
     const sheet = ss.getSheetByName("Students") || ss.getSheets()[0];
     const data = sheet.getDataRange().getValues();
 
-    const studentId = String(student.id || ("std_" + Date.now()));
+    const studentId = String(student.id || ("std_" + Date.now())).trim();
     const studentName = String(student.name).trim();
     const studentSchool = String(student.school || "الصف الخامس الابتدائي").trim();
     const avatar = String(student.avatar || "🚀");
@@ -156,12 +167,25 @@ function doPost(e) {
     const hasCert = (student.hasCertificate || Boolean(completedAt) || (completedCount === 6 && Boolean(finalScore))) ? "نعم" : "لا";
     const lastEvent = payload.event || student.lastEvent || "تحديث النشاط";
 
-    // فحص ما إذا كان الطالب مسجلاً مسبقاً للقيام بالتحديث بدلاً من التكرار
+    // فحص ما إذا كان الطالب مسجلاً مسبقاً بالمعرف أو بالاسم (مع تطبيع الهمزات والمسافات)
+    const normTargetName = normalizeArabic(studentName);
     let foundRow = -1;
+    const duplicateRowIndices = [];
+
     for (let r = 1; r < data.length; r++) {
-      if (String(data[r][0]).trim() === studentId || String(data[r][1]).trim() === studentName) {
-        foundRow = r + 1; // 1-based index
-        break;
+      const colId = String(data[r][0] || "").trim();
+      const colName = String(data[r][1] || "").trim();
+      
+      const isMatch = (studentId && colId === studentId) || 
+                      (normTargetName && normalizeArabic(colName) === normTargetName) ||
+                      (normTargetName && normalizeArabic(colId) === normTargetName);
+
+      if (isMatch) {
+        if (foundRow === -1) {
+          foundRow = r + 1; // 1-based index للصف الأول المطابق
+        } else {
+          duplicateRowIndices.push(r + 1); // صف مكرر إضافي سيتم حذفه تلقائياً
+        }
       }
     }
 
@@ -189,8 +213,17 @@ function doPost(e) {
     ];
 
     if (foundRow > 0) {
+      // تحديث الصف الأصلي بدلاً من تكراره
       sheet.getRange(foundRow, 1, 1, rowValues.length).setValues([rowValues]);
+      
+      // حذف أي صفوف مكررة قديمة من الأسفل للأعلى
+      if (duplicateRowIndices.length > 0) {
+        duplicateRowIndices.reverse().forEach(rowNum => {
+          try { sheet.deleteRow(rowNum); } catch(e) {}
+        });
+      }
     } else {
+      // إضافة صف جديد فقط إذا لم يكن موجوداً إطلاقاً
       sheet.appendRow(rowValues);
     }
 
@@ -211,4 +244,34 @@ function doPost(e) {
       lock.releaseLock();
     } catch (e) {}
   }
+}
+
+/**
+ * دالة مساعدة اختيارية للأدمن: تشغيلها مباشرة من داخل محرر Apps Script لتنظيف أي تكرارات حالية فوراً
+ */
+function removeDuplicatesNow() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Students") || ss.getSheets()[0];
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return;
+
+  const seen = new Set();
+  const rowsToDelete = [];
+
+  for (let r = 1; r < data.length; r++) {
+    const name = normalizeArabic(data[r][1]);
+    if (!name) continue;
+    if (seen.has(name)) {
+      rowsToDelete.push(r + 1);
+    } else {
+      seen.add(name);
+    }
+  }
+
+  // حذف من الأسفل للأعلى لعدم تغير أرقام الصفوف
+  rowsToDelete.reverse().forEach(rowNum => {
+    sheet.deleteRow(rowNum);
+  });
+
+  Logger.log("تم حذف " + rowsToDelete.length + " صفاً مكرراً بنجاح.");
 }

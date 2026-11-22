@@ -29,21 +29,27 @@ export default function StudentRegistrationModal({
   const [school, setSchool] = useState(initialProfile?.school || '');
   const [avatar, setAvatar] = useState(initialProfile?.avatar || '🚀');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     const trimmedName = name.trim();
     if (!trimmedName || trimmedName.length < 2) {
       setError('يرجى كتابة اسم الطالب بشكل صحيح (حرفين على الأقل)');
       return;
     }
 
+    setIsSubmitting(true);
+
     // إذا لم يتم إدخال اسم المدرسة، تصبح تلقائياً "مدرسة المنال الابتدائية"
     const trimmedSchool = school.trim() || 'مدرسة المنال الابتدائية';
 
     const profileData = {
+      id: initialProfile?.id || ('std_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6)),
       name: trimmedName,
       school: trimmedSchool,
       avatar: avatar || '🚀',
@@ -235,10 +241,11 @@ export default function StudentRegistrationModal({
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#39A9D0] to-[#E5A91B] text-slate-950 font-black text-sm shadow-glow-primary hover:brightness-110 active:scale-[0.98] transition flex items-center justify-center gap-2"
+            disabled={isSubmitting}
+            className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#39A9D0] to-[#E5A91B] text-slate-950 font-black text-sm shadow-glow-primary hover:brightness-110 active:scale-[0.98] transition flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <Check className="w-4 h-4 stroke-[3]" />
-            <span>{isFirstTime ? 'انطلق إلى عالم الرياضيات 🚀' : 'حفظ التعديلات'}</span>
+            <span>{isSubmitting ? 'جاري التسجيل...' : isFirstTime ? 'انطلق إلى عالم الرياضيات 🚀' : 'حفظ التعديلات'}</span>
           </button>
 
         </form>

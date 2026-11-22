@@ -115,7 +115,11 @@ export function recordStudentUpdate(profile, progress = null, eventName = null) 
   if (!profile || !profile.name) return;
 
   const students = getRegisteredStudents();
-  const existingIdx = students.findIndex(s => s.name.trim() === profile.name.trim());
+  const trimmedName = profile.name.trim().toLowerCase();
+  const existingIdx = students.findIndex(s => 
+    (profile.id && s.id === profile.id) || 
+    (s.name && s.name.trim().toLowerCase() === trimmedName)
+  );
   const now = new Date().toISOString();
 
   let studentRecord;
@@ -123,7 +127,7 @@ export function recordStudentUpdate(profile, progress = null, eventName = null) 
     studentRecord = { ...students[existingIdx] };
   } else {
     studentRecord = {
-      id: 'std_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      id: profile.id || ('std_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6)),
       name: profile.name.trim(),
       school: profile.school || 'الصف الخامس الابتدائي',
       avatar: profile.avatar || '🚀',
@@ -205,10 +209,28 @@ export function setWebhookUrl(url) {
   }
 }
 
+// ذاكرة حظر الإرسال المكرر اللحظي لكل طالب
+const lastBroadcastTimeByStudent = {};
+
 /**
  * إرسال تحديثات الطالب لخادم سحابي أو Google Sheets Webhook مجاني
+ * مزود بحماية صارمة تمنع إرسال طلبين في نفس اللحظة (Deduplication Guard)
  */
 export async function broadcastToCloudWebhook(studentRecord, eventName) {
+  if (!studentRecord || !studentRecord.name) return;
+
+  const studentKey = studentRecord.name.trim().toLowerCase();
+  const now = Date.now();
+  const lastTime = lastBroadcastTimeByStudent[studentKey] || 0;
+
+  // حظر أي إرسال مكرر لنفس الطالب إذا كان الفارق الزمني أقل من 4 ثوانٍ لمنع التسجيل المزدوج في Google Sheets
+  if (now - lastTime < 4000) {
+    console.warn(`[Webhook Guard] تم حظر إرسال مكرر للطالب "${studentRecord.name}" لنفس الجلسة`);
+    return;
+  }
+
+  lastBroadcastTimeByStudent[studentKey] = now;
+
   try {
     const webhookUrl = getWebhookUrl();
     if (!webhookUrl || !webhookUrl.startsWith('http')) return;

@@ -72,6 +72,7 @@ export default function ConceptLesson({
     const curSent = sentences[currentSentenceIdx];
     const curText = curSent.text;
 
+    // 1. Identify Active Section (for multi-section lessons, e.g. lesson-2-2-2, lesson-6-6-2)
     let activeSectionIdx = 0;
     if (currentLesson.sections.length > 1) {
       if (curText.includes('المفهوم الثاني') || (currentLesson.sections[1] && curText.includes(currentLesson.sections[1].heading.slice(0, 10)))) {
@@ -82,25 +83,69 @@ export default function ConceptLesson({
     }
 
     const currentSection = currentLesson.sections[activeSectionIdx] || currentLesson.sections[0];
-    const isFormulaActive = curText.includes('القانون') || curText.includes('معادلة') || curText.includes('المعادلة');
 
+    // 2. Sentence 0 is ALWAYS the lesson introduction (المفهوم الأساسي)
+    if (currentSentenceIdx === 0) {
+      return {
+        activeSectionIdx: 0,
+        isFormulaActive: false,
+        activeKeyPointIdx: -1,
+        activePartName: 'المفهوم الرياضي الأساسي 💡'
+      };
+    }
+
+    // 3. Multi-section intros (e.g. "المفهوم الثاني:")
+    if (curText.startsWith('المفهوم الثاني') || curText.startsWith('المفهوم الأول')) {
+      return {
+        activeSectionIdx,
+        isFormulaActive: false,
+        activeKeyPointIdx: -1,
+        activePartName: 'المفهوم الرياضي الأساسي 💡'
+      };
+    }
+
+    // 4. Identify Key Point / Solution Steps (الأولى، الثانية، المستويات...)
     let activeKeyPointIdx = -1;
-    if (currentSection.keyPoints && currentSection.keyPoints.length > 0) {
-      const ordinals = ['أولاً', 'ثانياً', 'ثالثاً', 'رابعاً', 'خامساً', 'سادساً'];
-      ordinals.forEach((ord, oIdx) => {
-        if (curText.includes(ord)) {
-          activeKeyPointIdx = oIdx;
-        }
-      });
-      if (activeKeyPointIdx === -1 && (curText.includes('قواعد') || curText.includes('خطوات') || curText.includes('القاعدة'))) {
+    const stepPatterns = [
+      [/أولاً|الخطوة الأولى|المستوى الأول/],
+      [/ثانياً|الخطوة الثانية|المستوى الثاني/],
+      [/ثالثاً|الخطوة الثالثة|المستوى الثالث/],
+      [/رابعاً|الخطوة الرابعة|المستوى الرابع/],
+      [/خامساً|الخطوة الخامسة|المستوى الخامس/],
+      [/سادساً|الخطوة السادسة/]
+    ];
+
+    stepPatterns.forEach((patternList, pIdx) => {
+      if (patternList.some(rx => rx.test(curText))) {
+        activeKeyPointIdx = pIdx;
+      }
+    });
+
+    // Fallback for rule-intro sentences without explicit ordinals (only if sentenceIdx >= 2)
+    if (activeKeyPointIdx === -1 && currentSentenceIdx >= 2) {
+      if (curText.startsWith('وقاعدة الحسم') && currentSection.keyPoints && currentSection.keyPoints.length > 1) {
+        activeKeyPointIdx = currentSection.keyPoints.length - 1;
+      } else if (curText.startsWith('خطوات') || curText.startsWith('القواعد الأساسية') || curText.startsWith('القاعدة الذهبية')) {
         activeKeyPointIdx = 0;
       }
     }
 
-    let activePartName = 'المفهوم والقيمة المكانية';
+    // 5. Formula & Equation detection (only when not a step/rule sentence)
+    let isFormulaActive = false;
+    if (activeKeyPointIdx === -1) {
+      const isFormulaIntro = curText.startsWith('القانون والمعادلة') || curText.startsWith('القانون') || curText.startsWith('معادلة') || curText.startsWith('المعادلة');
+      const containsFormulaPhrase = curText.includes('معادلة الضرب') || curText.includes('معادلة القسمة') || curText.includes('معادلة الجمع') || curText.includes('معادلة الطرح') || curText.includes('معادلة التحقق');
+      if (isFormulaIntro || containsFormulaPhrase) {
+        // Guard against sentences that are rule headers rather than formulas
+        if (!curText.startsWith('قواعد') && !curText.startsWith('مستويات سلم')) {
+          isFormulaActive = true;
+        }
+      }
+    }
+
+    let activePartName = 'المفهوم والقيمة المكانية 💡';
     if (isFormulaActive) activePartName = 'القانون والمعادلة الرياضية 📐';
-    else if (activeKeyPointIdx >= 0) activePartName = `القاعدة وخطوة الحل رقم ${activeKeyPointIdx + 1} 💡`;
-    else if (currentSentenceIdx === 0) activePartName = 'مقدمة الدرس 🚀';
+    else if (activeKeyPointIdx >= 0) activePartName = `قاعدة وخطوة الحل رقم ${activeKeyPointIdx + 1} ⚡`;
 
     return { activeSectionIdx, isFormulaActive, activeKeyPointIdx, activePartName };
   };
@@ -110,7 +155,6 @@ export default function ConceptLesson({
   // Reverse seek helper: resolves exact sentence index when student clicks a formula, card or rule
   const getSeekIndex = (sIdx, targetType, pIdx = 0) => {
     if (!sentences || sentences.length === 0) return 0;
-    const ordinals = ['أولاً', 'ثانياً', 'ثالثاً', 'رابعاً', 'خامساً', 'سادساً'];
     const midpoint = Math.floor(sentences.length / 2);
 
     if (targetType === 'section') {
@@ -121,22 +165,36 @@ export default function ConceptLesson({
 
     if (targetType === 'formula') {
       const fIdx = sentences.findIndex((s, i) => {
+        if (i === 0) return false;
         const inRange = currentLesson.sections.length > 1 ? (sIdx === 0 ? i < midpoint : i >= midpoint) : true;
-        return inRange && (s.text.includes('القانون') || s.text.includes('معادلة') || s.text.includes('المعادلة'));
+        const matchesFormula = s.text.startsWith('القانون') || s.text.startsWith('معادلة') || s.text.startsWith('المعادلة') || s.text.includes('معادلة الضرب') || s.text.includes('معادلة القسمة') || s.text.includes('معادلة الجمع') || s.text.includes('معادلة الطرح');
+        return inRange && matchesFormula && !s.text.startsWith('قواعد');
       });
       return fIdx !== -1 ? fIdx : (sIdx === 0 ? 1 : midpoint);
     }
 
     if (targetType === 'keypoint') {
-      const ord = ordinals[pIdx] || '';
-      const kIdx = sentences.findIndex((s, i) => {
-        const inRange = currentLesson.sections.length > 1 ? (sIdx === 0 ? i < midpoint : i >= midpoint) : true;
-        return inRange && ord && s.text.includes(ord);
-      });
-      if (kIdx !== -1) return kIdx;
+      const stepPatterns = [
+        [/أولاً|الخطوة الأولى|المستوى الأول/],
+        [/ثانياً|الخطوة الثانية|المستوى الثاني/],
+        [/ثالثاً|الخطوة الثالثة|المستوى الثالث/],
+        [/رابعاً|الخطوة الرابعة|المستوى الرابع/],
+        [/خامساً|الخطوة الخامسة|المستوى الخامس/],
+        [/سادساً|الخطوة السادسة/]
+      ];
+      const rxList = stepPatterns[pIdx];
+      if (rxList) {
+        const kIdx = sentences.findIndex((s, i) => {
+          if (i === 0) return false;
+          const inRange = currentLesson.sections.length > 1 ? (sIdx === 0 ? i < midpoint : i >= midpoint) : true;
+          return inRange && rxList.some(rx => rx.test(s.text));
+        });
+        if (kIdx !== -1) return kIdx;
+      }
       const genIdx = sentences.findIndex((s, i) => {
+        if (i <= 1) return false;
         const inRange = currentLesson.sections.length > 1 ? (sIdx === 0 ? i < midpoint : i >= midpoint) : true;
-        return inRange && (s.text.includes('قواعد') || s.text.includes('خطوات') || s.text.includes('القاعدة'));
+        return inRange && (s.text.startsWith('خطوات') || s.text.startsWith('القواعد') || s.text.startsWith('القاعدة'));
       });
       return genIdx !== -1 ? genIdx : (sIdx === 0 ? 2 : midpoint);
     }
