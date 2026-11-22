@@ -144,6 +144,13 @@ export default function StageViewer({
   const [solutionCountdown, setSolutionCountdown] = useState(0);
   const solutionTimerRef = useRef(null);
 
+  // Mandatory 5-second listening lock & skip confirmation modal
+  const [listenSeconds, setListenSeconds] = useState(0);
+  const [isNarrationCompleted, setIsNarrationCompleted] = useState(false);
+  const [showSkipConfirmModal, setShowSkipConfirmModal] = useState(false);
+  const listenSecondsRef = useRef(0);
+  const isNarrationCompletedRef = useRef(false);
+
   const triggerSummaryReading = () => {
     setIsSummaryActive(true);
     setSummaryCountdown(4); // 4-second reading window
@@ -187,6 +194,13 @@ export default function StageViewer({
     const handleTimeUpdate = () => {
       if (!audio) return;
       const t = audio.currentTime;
+      if (!isNaN(t) && t >= 0) {
+        const floored = Math.floor(t);
+        if (floored !== listenSecondsRef.current) {
+          listenSecondsRef.current = floored;
+          setListenSeconds(floored);
+        }
+      }
       const activeTask = activeManifestTaskRef.current;
       if (activeTask && activeTask.sentences && activeTask.sentences.length > 0) {
         const matchIdx = activeTask.sentences.findIndex(
@@ -206,6 +220,8 @@ export default function StageViewer({
       setIsPlayingAudio(false);
       setIsPausedAudio(false);
       setCurrentSentenceIdx(-1);
+      setIsNarrationCompleted(true);
+      isNarrationCompletedRef.current = true;
       // Auto-unlock the next step upon full narration completion
       advanceUnlockedStep(stepIndexRef.current + 1);
 
@@ -227,10 +243,18 @@ export default function StageViewer({
       setIsPausedAudio(false);
     };
 
+    const handleError = () => {
+      setIsPlayingAudio(false);
+      setIsPausedAudio(false);
+      setIsNarrationCompleted(true);
+      isNarrationCompletedRef.current = true;
+    };
+
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('play', handlePlay);
+    audio.addEventListener('error', handleError);
 
     return () => {
       if (speakTimeoutRef.current) {
@@ -259,6 +283,7 @@ export default function StageViewer({
         audio.removeEventListener('ended', handleEnded);
         audio.removeEventListener('pause', handlePause);
         audio.removeEventListener('play', handlePlay);
+        audio.removeEventListener('error', handleError);
         try {
           audio.pause();
           audio.src = '';
@@ -266,6 +291,25 @@ export default function StageViewer({
       }
     };
   }, []);
+
+  // Active timer for tracking listenSeconds during audio playback
+  useEffect(() => {
+    if (!isPlayingAudio || isPausedAudio || isNarrationCompleted) return;
+
+    const timer = setInterval(() => {
+      const audio = audioPlayerRef.current;
+      if (audio && !audio.paused && !isNaN(audio.currentTime) && audio.currentTime > 0) {
+        const cur = Math.floor(audio.currentTime);
+        listenSecondsRef.current = cur;
+        setListenSeconds(cur);
+      } else {
+        listenSecondsRef.current += 1;
+        setListenSeconds(prev => prev + 1);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isPlayingAudio, isPausedAudio, isNarrationCompleted]);
 
   // Dynamic bottom offset so the navigation bar stops before the footer
   const [bottomOffset, setBottomOffset] = useState(8);
@@ -554,6 +598,8 @@ export default function StageViewer({
           setIsPlayingAudio(false);
           setIsPausedAudio(false);
           setCurrentSentenceIdx(-1);
+          setIsNarrationCompleted(true);
+          isNarrationCompletedRef.current = true;
           advanceUnlockedStep(stepIndexRef.current + 1);
 
           const cur = getStepDetails(stepIndexRef.current);
@@ -566,6 +612,8 @@ export default function StageViewer({
           setIsPlayingAudio(false);
           setIsPausedAudio(false);
           setCurrentSentenceIdx(-1);
+          setIsNarrationCompleted(true);
+          isNarrationCompletedRef.current = true;
         };
 
         utteranceRef.current = utterance;
@@ -681,6 +729,12 @@ export default function StageViewer({
       practiceThinkingTimerRef.current = null;
     }
 
+    setListenSeconds(0);
+    listenSecondsRef.current = 0;
+    setIsNarrationCompleted(false);
+    isNarrationCompletedRef.current = false;
+    setShowSkipConfirmModal(false);
+
     stopAudio();
     const clampedStep = Math.max(0, Math.min(newStep, totalSteps - 1));
     setStepIndex(clampedStep);
@@ -699,27 +753,7 @@ export default function StageViewer({
     }
   };
 
-  // Next Button handler with strict quiz-completion gating & step-by-step unlock
-  const handleNext = () => {
-    // If student is in summary reading countdown (concepts mode)
-    if (currentStep.type === 'lesson' && currentStep.subTab === 'concepts' && summaryCountdown > 0) {
-      showLockToast("استوعب خلاصة الدرس والفكرة الأساسية أولاً! سيتفاعل الزر تلقائياً خلال لحظات 💡", "قراءة الخلاصة 📖");
-      return;
-    }
-
-    // If student is in practice tab and hasn't revealed the solution yet
-    if (currentStep.type === 'lesson' && currentStep.subTab === 'practice' && !hasRevealedSolution) {
-      showLockToast("اضغط على زر 'إظهار خطوات الحل والتحقق' في المسألة أولاً لمقارنة حلك النموذجي 💡", "أظهر الحل أولاً 🔓");
-      document.querySelector('[title*="إظهار"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
-
-    // If student is in practice tab and 3-second solution inspection countdown is running
-    if (currentStep.type === 'lesson' && currentStep.subTab === 'practice' && hasRevealedSolution && solutionCountdown > 0) {
-      showLockToast("تفحص خطوات الحل والناتج أولاً! سيتفاعل الزر خلال 3 ثوانٍ 🎯", "مراجعة الحل ⏳");
-      return;
-    }
-
+  const advanceAndGoNext = () => {
     stopAudio();
     if (stepIndex < totalSteps - 1) {
       const nextIndex = stepIndex + 1;
@@ -738,6 +772,54 @@ export default function StageViewer({
         onStartQuiz();
       }
     }
+  };
+
+  // Next Button handler with strict quiz-completion gating & step-by-step unlock
+  const handleNext = () => {
+    // 1. Mandatory 5-second listening check for lessons
+    if (currentStep.type === 'lesson' && !isNarrationCompletedRef.current && listenSecondsRef.current < 5) {
+      showLockToast("عليك الاستماع إلى الشرح لمدة لا تقل عن 5 ثوانٍ أولاً قبل التخطي! 🎧", "استمع للشرح أولاً ⏳");
+      return;
+    }
+
+    // 2. Skip confirmation modal if student clicks Next before narration finishes
+    if (currentStep.type === 'lesson' && !isNarrationCompletedRef.current) {
+      setShowSkipConfirmModal(true);
+      return;
+    }
+
+    // 3. If student is in summary reading countdown (concepts mode)
+    if (currentStep.type === 'lesson' && currentStep.subTab === 'concepts' && summaryCountdown > 0) {
+      showLockToast("استوعب خلاصة الدرس والفكرة الأساسية أولاً! سيتفاعل الزر تلقائياً خلال لحظات 💡", "قراءة الخلاصة 📖");
+      return;
+    }
+
+    // 4. If student is in practice tab and hasn't revealed the solution yet
+    if (currentStep.type === 'lesson' && currentStep.subTab === 'practice' && !hasRevealedSolution) {
+      showLockToast("اضغط على زر 'إظهار خطوات الحل والتحقق' في المسألة أولاً لمقارنة حلك النموذجي 💡", "أظهر الحل أولاً 🔓");
+      document.querySelector('[title*="إظهار"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    // 5. If student is in practice tab and 3-second solution inspection countdown is running
+    if (currentStep.type === 'lesson' && currentStep.subTab === 'practice' && hasRevealedSolution && solutionCountdown > 0) {
+      showLockToast("تفحص خطوات الحل والناتج أولاً! سيتفاعل الزر خلال 3 ثوانٍ 🎯", "مراجعة الحل ⏳");
+      return;
+    }
+
+    advanceAndGoNext();
+  };
+
+  const handleConfirmSkip = () => {
+    setShowSkipConfirmModal(false);
+    stopAudio();
+    setIsNarrationCompleted(true);
+    isNarrationCompletedRef.current = true;
+    advanceAndGoNext();
+  };
+
+  const handleContinueExplanation = () => {
+    setShowSkipConfirmModal(false);
   };
 
   // Prev Button handler
@@ -1129,8 +1211,9 @@ export default function StageViewer({
             </div>
           </div>
 
-          {/* Next Step Button with Auto-Play Narration, Summary Reading & Solution Gating */}
+          {/* Next Step Button with Auto-Play Narration, Summary Reading, 5s Mandatory Listening & Solution Gating */}
           {(() => {
+            const isListenLocked = currentStep.type === 'lesson' && !isNarrationCompleted && listenSeconds < 5;
             const isConceptReading = currentStep.type === 'lesson' && currentStep.subTab === 'concepts' && summaryCountdown > 0;
             const isPracticeGated = currentStep.type === 'lesson' && currentStep.subTab === 'practice' && !hasRevealedSolution;
             const isSolutionCoolingDown = currentStep.type === 'lesson' && currentStep.subTab === 'practice' && hasRevealedSolution && solutionCountdown > 0;
@@ -1141,7 +1224,9 @@ export default function StageViewer({
                 onClick={handleNext}
                 disabled={isNextDisabled}
                 className={`px-2.5 sm:px-4 py-1.5 sm:py-2.5 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm transition flex items-center gap-1 sm:gap-1.5 shrink-0 ${
-                  isConceptReading
+                  isListenLocked
+                    ? 'bg-slate-800 text-amber-400 border border-amber-500/40 hover:bg-slate-800/80 cursor-pointer shadow-sm active:scale-95'
+                    : isConceptReading
                     ? 'bg-cyan-500/20 text-[#39A9D0] border border-[#39A9D0]/50 cursor-wait animate-pulse'
                     : isPracticeGated
                     ? 'bg-amber-500/15 text-[#E5A91B] border border-[#E5A91B]/40 hover:bg-amber-500/25 active:scale-95'
@@ -1154,7 +1239,9 @@ export default function StageViewer({
                     : 'bg-gradient-to-r from-[#39A9D0] to-[#E5A91B] text-slate-950 shadow-glow-primary hover:brightness-110 active:scale-95'
                 }`}
                 title={
-                  isConceptReading
+                  isListenLocked
+                    ? "عليك الاستماع إلى الشرح لمدة لا تقل عن 5 ثوانٍ أولاً"
+                    : isConceptReading
                     ? "اقرأ خلاصة الدرس والفكرة الأساسية أولاً"
                     : isPracticeGated
                     ? "اضغط على زر إظهار الحل أولاً لتفعيل التالي"
@@ -1164,7 +1251,12 @@ export default function StageViewer({
                 }
               >
                 <span className="truncate max-w-[85px] xs:max-w-[130px] sm:max-w-none text-[11px] sm:text-xs">
-                  {isConceptReading ? (
+                  {isListenLocked ? (
+                    <span className="flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-amber-400 shrink-0" />
+                      <span>استمع للشرح ({5 - listenSeconds}ث) 🎧</span>
+                    </span>
+                  ) : isConceptReading ? (
                     <>خلاصة الدرس ({summaryCountdown}ث) 📖</>
                   ) : isSolutionCoolingDown ? (
                     <>تفحص الحل ({solutionCountdown}ث) ⏳</>
@@ -1187,6 +1279,51 @@ export default function StageViewer({
 
         </div>
       </div>
+
+      {/* 🌟 نافذة تأكيد التخطي قبل إكمال الشرح 🌟 */}
+      {showSkipConfirmModal && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" 
+          dir="rtl"
+        >
+          <div className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 text-right">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0">
+                <Volume2 className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                  هل تود تخطي الدرس دون إكمال الشرح؟
+                </h3>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">
+                  تنبيه متابعة التعلم 💡
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-amber-500/5 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-amber-500/15">
+              الشرح الصوتي والتفاعلي ما زال مستمراً. يُنصح بالاستماع للشرح كاملاً لاستيعاب القواعد والخطوات الرياضية بدقة قبل الانتقال للمحطة التالية.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                onClick={handleConfirmSkip}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-rose-500/15 text-slate-600 dark:text-slate-300 hover:text-rose-400 border border-slate-200 dark:border-white/10 hover:border-rose-500/30 font-bold text-xs sm:text-sm transition flex items-center gap-1.5"
+              >
+                <span>تخطي 🚀</span>
+              </button>
+
+              <button
+                onClick={handleContinueExplanation}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#39A9D0] to-emerald-400 text-slate-950 font-black text-xs sm:text-sm shadow-glow-primary hover:brightness-110 active:scale-95 transition flex items-center gap-1.5"
+              >
+                <Volume2 className="w-4 h-4" />
+                <span>أكمل الشرح 🎧</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

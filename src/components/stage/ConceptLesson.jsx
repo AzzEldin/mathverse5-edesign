@@ -824,23 +824,13 @@ export default function ConceptLesson({
           
           <div 
             ref={practiceProblemsRef}
-            className={`p-4 sm:p-5 rounded-2xl border transition-all duration-500 text-right space-y-2 ${
-              isPracticeThinkingActive
-                ? 'bg-amber-500/20 border-[#E5A91B] ring-2 ring-[#E5A91B]/80 shadow-[0_0_30px_rgba(229,169,27,0.35)] scale-[1.01]'
-                : 'bg-amber-500/10 border-amber-500/30'
-            }`}
+            className="p-4 sm:p-5 rounded-2xl border transition-all duration-300 text-right space-y-2 bg-amber-500/10 border-amber-500/30"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <span className="text-xs font-black text-[#E5A91B] flex items-center gap-1.5">
                 <Calculator className="w-4 h-4" />
                 <span>معمل حل المسائل والتدريبات النموذجية (منهج الوزارة 2027)</span>
               </span>
-
-              {isPracticeThinkingActive && (
-                <span className="px-2.5 py-0.5 rounded-full bg-[#E5A91B] text-slate-950 text-[10px] font-black animate-pulse shadow-sm self-start sm:self-auto">
-                  🎯 فكر في حل المسألة بنفسك أولاً...
-                </span>
-              )}
 
               <button
                 onClick={() => {
@@ -882,11 +872,7 @@ export default function ConceptLesson({
               return (
                 <div 
                   key={sIdx}
-                  className={`glass-panel p-4 sm:p-7 rounded-2xl sm:rounded-3xl border transition-all duration-500 flex flex-col justify-between text-right ${
-                    isPracticeThinkingActive && sIdx === 0
-                      ? 'border-[#E5A91B] shadow-[0_0_35px_rgba(229,169,27,0.35)] ring-2 ring-[#E5A91B]/70 bg-gradient-to-b from-[#E5A91B]/5 via-transparent to-transparent'
-                      : 'border-slate-200 dark:border-white/10 hover:border-amber-400/40'
-                  }`}
+                  className="glass-panel p-4 sm:p-7 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 hover:border-amber-400/40 transition-all duration-500 flex flex-col justify-between text-right"
                 >
                   <div className="space-y-4">
                     

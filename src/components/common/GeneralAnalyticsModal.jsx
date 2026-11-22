@@ -34,7 +34,7 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
       if (res && res.success) {
         setSyncStatus({
           status: 'success',
-          message: `تم التحديث المباشر من Google Sheets (${res.count} طالب مسجل) 🟢`
+          message: 'تم التحديث المباشر'
         });
         setRefreshTrigger(t => t + 1);
       } else {
