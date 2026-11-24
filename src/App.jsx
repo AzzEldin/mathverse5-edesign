@@ -180,37 +180,37 @@ export default function App() {
   };
 
   const handleQuizCompleted = (quizId, scorePercentage, isPassed) => {
+    const stageNumMatch = quizId.match(/quiz-stage-(\d+)/);
+    const sNum = stageNumMatch ? parseInt(stageNumMatch[1], 10) : null;
+
+    let updatedProgress = null;
     setUserProgress(prev => {
       const newScores = { ...prev.quizScores, [quizId]: Math.max(scorePercentage, prev.quizScores[quizId] || 0) };
       let newCompleted = [...prev.completedStages];
 
-      if (isPassed) {
-        // If it's a stage quiz, add stage id
-        const stageNumMatch = quizId.match(/quiz-stage-(\d+)/);
-        if (stageNumMatch) {
-          const sNum = parseInt(stageNumMatch[1]);
-          if (!newCompleted.includes(sNum)) {
-            newCompleted.push(sNum);
-          }
-        }
+      if (isPassed && sNum && !newCompleted.includes(sNum)) {
+        newCompleted.push(sNum);
       }
 
-      const updatedProgress = {
+      updatedProgress = {
         ...prev,
         quizScores: newScores,
         completedStages: newCompleted
       };
+      return updatedProgress;
+    });
 
-      // تسجيل نشاط الطالب ودرجاته في لوحة الإحصائيات
-      if (studentProfile) {
+    // تسجيل نشاط الطالب ودرجاته في لوحة الإحصائيات بأمان خارج دالة التحديث
+    if (studentProfile && updatedProgress) {
+      try {
         const eventText = isPassed 
           ? `اجتياز اختبار ${quizId} بنتيجة ${scorePercentage}% 🎉` 
           : `محاولة اختبار ${quizId} بنتيجة ${scorePercentage}%`;
         recordStudentUpdate(studentProfile, updatedProgress, eventText);
+      } catch (e) {
+        console.warn("Error updating student analytics:", e);
       }
-
-      return updatedProgress;
-    });
+    }
   };
 
   const handleResetProgress = () => {
@@ -394,6 +394,7 @@ export default function App() {
         {/* View Component */}
         {currentView === 'stage' ? (
           <StageViewer
+            key={`stage-${currentStage.id}`}
             stage={currentStage}
             onStartQuiz={() => handleStartQuiz(currentStage.quizId)}
             isCompleted={userProgress.completedStages.includes(currentStage.id)}

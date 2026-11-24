@@ -400,9 +400,10 @@ export default function StageViewer({
     }
   };
 
-  const currentStep = getStepDetails(stepIndex);
-  const nextStep = stepIndex < totalSteps - 1 ? getStepDetails(stepIndex + 1) : null;
-  const prevStep = stepIndex > 0 ? getStepDetails(stepIndex - 1) : null;
+  const safeStepIndex = Math.max(0, Math.min(stepIndex, totalSteps - 1));
+  const currentStep = getStepDetails(safeStepIndex);
+  const nextStep = safeStepIndex < totalSteps - 1 ? getStepDetails(safeStepIndex + 1) : null;
+  const prevStep = safeStepIndex > 0 ? getStepDetails(safeStepIndex - 1) : null;
 
   const currentLesson = stage.lessons?.[currentStep.lessonIdx] || stage.lessons?.[0];
 
