@@ -227,6 +227,47 @@ export default function App() {
 
   const currentStage = STAGES_DATA.find(s => s.id === userProgress.currentStageId) || STAGES_DATA[0];
 
+  const handleProceedToNextStage = (fromStageId) => {
+    const stageNum = fromStageId || userProgress.currentStageId;
+    const nextStageId = stageNum + 1;
+    
+    // إيقاف أي قراءة صوتية نشطة
+    try {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    } catch (e) {}
+
+    if (stageNum < STAGES_DATA.length) {
+      setUserProgress(prev => {
+        const completed = prev.completedStages.includes(stageNum)
+          ? prev.completedStages
+          : [...prev.completedStages, stageNum];
+        return {
+          ...prev,
+          completedStages: completed,
+          currentStageId: nextStageId
+        };
+      });
+      setCurrentView('stage');
+      setActiveQuizId(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      // إتمام كافة المراحل الست -> فتح الامتحان النهائي
+      setUserProgress(prev => {
+        const completed = prev.completedStages.includes(stageNum)
+          ? prev.completedStages
+          : [...prev.completedStages, stageNum];
+        return {
+          ...prev,
+          completedStages: completed
+        };
+      });
+      setActiveQuizId(null);
+      openFinalExam();
+    }
+  };
+
   const handlePrevStage = () => {
     if (userProgress.currentStageId > 1) {
       handleSelectStage(userProgress.currentStageId - 1);
@@ -240,9 +281,7 @@ export default function App() {
       alert(`يجب اجتياز اختبار المرحلة ${currentId} أولاً للانتقال إلى المرحلة التالية!`);
       return;
     }
-    if (currentId < STAGES_DATA.length) {
-      handleSelectStage(currentId + 1);
-    }
+    handleProceedToNextStage(currentId);
   };
 
   const openFinalExam = () => {
@@ -380,9 +419,11 @@ export default function App() {
       {activeQuizId && (
         <QuizModal
           quizData={QUIZZES_DATABASE[activeQuizId]}
+          currentStageId={userProgress.currentStageId}
           onClose={() => setActiveQuizId(null)}
           onQuizCompleted={handleQuizCompleted}
           onOpenCertificate={() => setIsCertificateOpen(true)}
+          onProceedToNextStage={handleProceedToNextStage}
         />
       )}
 

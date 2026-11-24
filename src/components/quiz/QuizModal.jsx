@@ -1,21 +1,32 @@
-import React, { useState } from 'react';
-import { X, CheckCircle, AlertCircle, Award, RotateCcw, ArrowLeft, Sparkles, GraduationCap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, CheckCircle, AlertCircle, Award, RotateCcw, ArrowLeft, Sparkles, GraduationCap, Play, Pause, BookOpen } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function QuizModal({ 
   quizData, 
   onClose, 
   onQuizCompleted,
-  onOpenCertificate 
+  onOpenCertificate,
+  onProceedToNextStage,
+  currentStageId
 }) {
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
 
-  const questions = quizData.questions || [];
+  // Auto-transition countdown timer state (5 seconds)
+  const [countdown, setCountdown] = useState(5);
+  const [isAutoTransitionPaused, setIsAutoTransitionPaused] = useState(false);
+
+  const questions = quizData?.questions || [];
   const currentQ = questions[currentQuestionIdx];
   const totalQuestions = questions.length;
+
+  // Determine stage info
+  const stageMatch = quizData?.id?.match(/quiz-stage-(\d+)/);
+  const stageNumber = stageMatch ? parseInt(stageMatch[1], 10) : (currentStageId || 1);
+  const isFinalExam = quizData?.id === 'final-mastery-exam' || quizData?.id === 'final-exam';
 
   const handleSelectOption = (optIndex) => {
     if (!isAnswerRevealed) {
@@ -46,13 +57,27 @@ export default function QuizModal({
     const passed = scorePercentage >= (quizData.passingScore || 80);
 
     if (passed) {
-      // Fire confetti
+      // Fire multi-cannon celebratory confetti
       try {
         confetti({
           particleCount: 100,
           spread: 70,
           origin: { y: 0.6 }
         });
+        setTimeout(() => {
+          confetti({
+            particleCount: 60,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0, y: 0.7 }
+          });
+          confetti({
+            particleCount: 60,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1, y: 0.7 }
+          });
+        }, 350);
       } catch (e) {
         // ignore
       }
@@ -67,6 +92,8 @@ export default function QuizModal({
     setCurrentQuestionIdx(0);
     setIsAnswerRevealed(false);
     setIsFinished(false);
+    setCountdown(5);
+    setIsAutoTransitionPaused(false);
   };
 
   // Calculate final score
@@ -77,7 +104,29 @@ export default function QuizModal({
     }
   });
   const finalScore = Math.round((correctCount / totalQuestions) * 100);
-  const isPassed = finalScore >= (quizData.passingScore || 80);
+  const isPassed = finalScore >= (quizData?.passingScore || 80);
+
+  // Automatic transition countdown effect
+  useEffect(() => {
+    let timer;
+    if (isFinished && isPassed && !isAutoTransitionPaused) {
+      if (countdown <= 0) {
+        if (isFinalExam) {
+          onClose();
+          onOpenCertificate();
+        } else if (onProceedToNextStage) {
+          onProceedToNextStage(stageNumber);
+        } else {
+          onClose();
+        }
+      } else {
+        timer = setTimeout(() => {
+          setCountdown(c => c - 1);
+        }, 1000);
+      }
+    }
+    return () => clearTimeout(timer);
+  }, [isFinished, isPassed, isAutoTransitionPaused, countdown, isFinalExam, stageNumber, onProceedToNextStage, onClose, onOpenCertificate]);
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fadeIn" dir="rtl">
@@ -87,6 +136,7 @@ export default function QuizModal({
         <button
           onClick={onClose}
           className="absolute top-5 left-5 p-2 rounded-full bg-slate-800 dark:bg-slate-800 light:bg-slate-100 text-slate-400 dark:text-slate-400 light:text-slate-600 hover:text-white dark:hover:text-white light:hover:text-slate-900 transition"
+          title="إغلاق"
         >
           <X className="w-5 h-5" />
         </button>
@@ -94,10 +144,10 @@ export default function QuizModal({
         {/* Modal Header */}
         <div>
           <span className="text-xs font-bold text-[#39A9D0] uppercase tracking-wider block mb-1">
-            {quizData.subtitle}
+            {quizData?.subtitle}
           </span>
           <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white pr-8">
-            {quizData.title}
+            {quizData?.title}
           </h3>
         </div>
 
@@ -111,7 +161,7 @@ export default function QuizModal({
                 السؤال <span className="text-white font-math">{currentQuestionIdx + 1}</span> من <span className="font-math">{totalQuestions}</span>
               </span>
               <span className="font-math font-bold text-[#E5A91B]">
-                درجة النجاح المطلوبة: {quizData.passingScore || 80}%
+                درجة النجاح المطلوبة: {quizData?.passingScore || 80}%
               </span>
             </div>
 
@@ -126,13 +176,13 @@ export default function QuizModal({
             {/* Question Card */}
             <div className="p-5 rounded-2xl bg-slate-950/80 dark:bg-slate-950/80 light:bg-slate-100 border border-white/10 dark:border-white/10 light:border-slate-300 space-y-3">
               <h4 className="text-base sm:text-lg font-bold text-slate-100 dark:text-slate-100 light:text-slate-900 leading-relaxed">
-                {currentQ.question}
+                {currentQ?.question}
               </h4>
             </div>
 
             {/* Options */}
             <div className="space-y-2.5">
-              {currentQ.options.map((option, idx) => {
+              {currentQ?.options?.map((option, idx) => {
                 const isSelected = selectedAnswers[currentQuestionIdx] === idx;
                 const isCorrect = idx === currentQ.correctIndex;
                 
@@ -167,7 +217,7 @@ export default function QuizModal({
             {isAnswerRevealed && (
               <div className="p-4 rounded-2xl bg-slate-800/80 dark:bg-slate-800/80 light:bg-amber-50 border border-white/10 dark:border-white/10 light:border-amber-300 text-xs sm:text-sm text-slate-300 dark:text-slate-300 light:text-slate-800 leading-relaxed space-y-1">
                 <span className="font-bold text-[#E5A91B] block">💡 الشرح والتوضيح الرياضي:</span>
-                <p>{currentQ.explanation}</p>
+                <p>{currentQ?.explanation}</p>
               </div>
             )}
 
@@ -186,18 +236,29 @@ export default function QuizModal({
           </div>
         ) : (
           /* Finished Result Screen */
-          <div className="text-center py-6 space-y-6">
-            <div className="w-20 h-20 rounded-full mx-auto flex items-center justify-center text-4xl shadow-xl border border-white/20">
+          <div className="text-center py-4 sm:py-6 space-y-6">
+            <div className={`w-20 h-20 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-2xl border ${
+              isPassed 
+                ? 'bg-gradient-to-tr from-amber-500 to-[#E5A91B] border-amber-300/40 shadow-glow-gold' 
+                : 'bg-slate-800 border-white/15'
+            }`}>
               {isPassed ? '🏆' : '📚'}
             </div>
 
             <div className="space-y-2">
-              <h4 className="text-2xl font-black text-white">
-                {isPassed ? 'تهانينا! لقد اجتزت الاختبار بنجاح باهر' : 'حاول مرة أخرى لتحقيق الإتقان!'}
-              </h4>
-              <p className="text-sm text-slate-300">
+              <h4 className="text-2xl sm:text-3xl font-black text-white">
                 {isPassed 
-                  ? 'أثبتّ استيعابك للمفاهيم الرياضية وجدارتك بالانتقال للمرحلة التالية.' 
+                  ? (isFinalExam 
+                      ? 'تهانينا الكبرى! لقد اجتزت الامتحان الشامل بامتياز! 🎓' 
+                      : `تهانينا يا بطل! لقد اجتزت اختبار المرحلة ${stageNumber} بنجاح باهر! 🎉`)
+                  : 'حاول مرة أخرى لتحقيق الإتقان! 💪'
+                }
+              </h4>
+              <p className="text-sm text-slate-300 max-w-lg mx-auto leading-relaxed">
+                {isPassed 
+                  ? (isFinalExam 
+                      ? 'أثبتّ براعتك التامة في منهج الرياضيات واستحقاقك لشهادة الإتقان الكبرى.' 
+                      : `تم فتح محطة المرحلة ${stageNumber < 6 ? stageNumber + 1 : 'النهائية'} بنجاح وإضافتها إلى سجل تقدمك التعليمي.`)
                   : 'راجع المعمل التفاعلي والشروحات، ثم أعد المحاولة للوصول لنسبة 80% فما فوق.'
                 }
               </p>
@@ -214,31 +275,110 @@ export default function QuizModal({
               </span>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
-              {quizData.id === 'final-mastery-exam' && isPassed ? (
-                <button
-                  onClick={() => { onClose(); onOpenCertificate(); }}
-                  className="px-6 py-3 rounded-2xl bg-gradient-to-r from-[#E5A91B] to-amber-500 text-slate-950 font-black text-sm flex items-center gap-2 shadow-glow-gold hover:scale-105 transition"
-                >
-                  <GraduationCap className="w-5 h-5" />
-                  <span>عرض وطباعة الشهادة الكبرى 📜</span>
-                </button>
-              ) : (
-                <button
-                  onClick={onClose}
-                  className="px-6 py-3 rounded-2xl bg-[#39A9D0] text-slate-950 font-black text-sm hover:bg-cyan-400 transition"
-                >
-                  متابعة مسار التعلم
-                </button>
-              )}
+            {/* Auto-Transition Countdown Bar (Only if Passed) */}
+            {isPassed && (
+              <div className="max-w-md mx-auto p-3.5 rounded-2xl bg-slate-950/80 border border-cyan-500/30 space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                  <span className="flex items-center gap-1.5 text-cyan-400">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                    <span>
+                      {isAutoTransitionPaused 
+                        ? 'تم إيقاف الانتقال التلقائي مؤقتاً' 
+                        : (isFinalExam 
+                            ? `عرض الشهادة تلقائياً خلال ${countdown} ثوانٍ... 📜` 
+                            : `الانتقال التلقائي للمرحلة التالية خلال ${countdown} ثوانٍ... 🚀`)
+                      }
+                    </span>
+                  </span>
+                  <button
+                    onClick={() => setIsAutoTransitionPaused(prev => !prev)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white border border-white/10 text-[11px] flex items-center gap-1 transition"
+                  >
+                    {isAutoTransitionPaused ? (
+                      <>
+                        <Play className="w-3 h-3 text-cyan-400 fill-current -scale-x-100" />
+                        <span>استئناف</span>
+                      </>
+                    ) : (
+                      <>
+                        <Pause className="w-3 h-3 text-amber-400 fill-current" />
+                        <span>إيقاف</span>
+                      </>
+                    )}
+                  </button>
+                </div>
 
-              <button
-                onClick={handleRetry}
-                className="px-4 py-3 rounded-2xl bg-slate-800 text-slate-300 hover:text-white border border-white/10 text-sm flex items-center gap-1.5 transition"
-              >
-                <RotateCcw className="w-4 h-4" /> إعادة الاختبار
-              </button>
+                {!isAutoTransitionPaused && (
+                  <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-[#39A9D0] via-[#E5A91B] to-emerald-400 rounded-full transition-all duration-1000"
+                      style={{ width: `${(countdown / 5) * 100}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              {isPassed ? (
+                <>
+                  {isFinalExam ? (
+                    <button
+                      onClick={() => { onClose(); onOpenCertificate(); }}
+                      className="px-7 py-3.5 rounded-2xl bg-gradient-to-r from-[#E5A91B] to-amber-500 text-slate-950 font-black text-sm flex items-center gap-2 shadow-glow-gold hover:scale-105 transition"
+                    >
+                      <GraduationCap className="w-5 h-5" />
+                      <span>عرض وطباعة الشهادة الكبرى 📜</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        if (onProceedToNextStage) {
+                          onProceedToNextStage(stageNumber);
+                        } else {
+                          onClose();
+                        }
+                      }}
+                      className="px-7 py-3.5 rounded-2xl bg-gradient-to-r from-[#39A9D0] to-emerald-400 text-slate-950 font-black text-sm flex items-center gap-2 shadow-glow-primary hover:brightness-110 hover:scale-105 transition"
+                    >
+                      <span>
+                        {stageNumber < 6 
+                          ? `الانتقال فوراً للمرحلة ${stageNumber + 1} 🚀`
+                          : 'الانتقال إلى الامتحان النهائي الشامل 🏆'
+                        }
+                      </span>
+                      <ArrowLeft className="w-4 h-4" />
+                    </button>
+                  )}
+
+                  <button
+                    onClick={handleRetry}
+                    className="px-4 py-3 rounded-2xl bg-slate-800 text-slate-300 hover:text-white border border-white/10 text-xs sm:text-sm flex items-center gap-1.5 transition"
+                  >
+                    <RotateCcw className="w-4 h-4" /> 
+                    <span>إعادة الاختبار</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleRetry}
+                    className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#B51F3A] to-amber-500 text-white font-black text-sm flex items-center gap-2 shadow-glow-crimson hover:brightness-110 transition"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>إعادة المحاولة الآن لتحقيق الإتقان 🎯</span>
+                  </button>
+
+                  <button
+                    onClick={onClose}
+                    className="px-5 py-3.5 rounded-2xl bg-slate-800 text-slate-300 hover:text-white border border-white/10 text-xs sm:text-sm flex items-center gap-1.5 transition"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>العودة للشروحات والمعمل 📚</span>
+                  </button>
+                </>
+              )}
             </div>
 
           </div>
