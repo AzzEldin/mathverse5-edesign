@@ -97,68 +97,109 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
     };
   }, [analytics.studentsList, studentProfile]);
 
-  // تصفية وفرز الطلاب
-  const filteredStudents = useMemo(() => {
-    let sourceList = analytics.studentsList || [];
-
-    // التأكد من إدراج الطالب الحالي في القائمة إن لم يكن مسجلاً سلفاً
-    if (studentProfile?.name && currentStudentRecord) {
-      const alreadyInList = sourceList.some(s =>
-        (studentProfile.id && s.id === studentProfile.id) ||
-        (s.name && s.name.trim().toLowerCase() === studentProfile.name.trim().toLowerCase())
-      );
-      if (!alreadyInList) {
-        sourceList = [currentStudentRecord, ...sourceList];
+    // استخراج وحساب الترتيب العام على مستوى المنصة (Global Leaderboard Rank)
+    const masterRankMap = useMemo(() => {
+      let fullList = [...(analytics.studentsList || [])];
+      if (studentProfile?.name && currentStudentRecord) {
+        const exists = fullList.some(s =>
+          (studentProfile.id && s.id === studentProfile.id) ||
+          (s.name && s.name.trim().toLowerCase() === studentProfile.name.trim().toLowerCase())
+        );
+        if (!exists) {
+          fullList.push(currentStudentRecord);
+        } else {
+          fullList = fullList.map(s => {
+            if ((studentProfile.id && s.id === studentProfile.id) ||
+                (s.name && s.name.trim().toLowerCase() === studentProfile.name.trim().toLowerCase())) {
+              return currentStudentRecord;
+            }
+            return s;
+          });
+        }
       }
-    }
 
-    const list = sourceList.filter(student => {
-      const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (student.school && student.school.toLowerCase().includes(searchQuery.toLowerCase()));
-      
-      const isCompleted = Boolean(student.completedAt) || (student.completedStages && student.completedStages.length === 6);
-      
-      if (statusFilter === 'completed') return matchesSearch && isCompleted;
-      if (statusFilter === 'in_progress') return matchesSearch && !isCompleted;
-      return matchesSearch;
-    });
-
-    const isCurrentStudent = (s) => {
-      if (!studentProfile?.name) return false;
-      if (studentProfile.id && s.id === studentProfile.id) return true;
-      return Boolean(s.name && s.name.trim().toLowerCase() === studentProfile.name.trim().toLowerCase());
-    };
-
-    return [...list].sort((a, b) => {
-      // 🌟 الطالب نفسه (المستخدم الحالي) يكون أول السجل تلقائياً وفي جميع خيارات الفرز
-      const isCurrentA = isCurrentStudent(a);
-      const isCurrentB = isCurrentStudent(b);
-      if (isCurrentA && !isCurrentB) return -1;
-      if (!isCurrentA && isCurrentB) return 1;
-
-      if (sortBy === 'completed') {
+      // ترتيب كل طلاب المنصة حسب الإنجاز ثم الدرجات لتحديد الترتيب العام الحقيقي
+      fullList.sort((a, b) => {
         const compA = (a.completedStages || []).length;
         const compB = (b.completedStages || []).length;
         if (compB !== compA) return compB - compA;
         return compareStudentsByScore(a, b);
+      });
+
+      const map = new Map();
+      fullList.forEach((s, idx) => {
+        const key = s.id || s.name;
+        map.set(key, idx + 1);
+      });
+      return map;
+    }, [analytics.studentsList, studentProfile, currentStudentRecord]);
+
+    // تصفية وفرز الطلاب
+    const filteredStudents = useMemo(() => {
+      let sourceList = analytics.studentsList || [];
+  
+      // التأكد من إدراج الطالب الحالي في القائمة إن لم يكن مسجلاً سلفاً
+      if (studentProfile?.name && currentStudentRecord) {
+        const alreadyInList = sourceList.some(s =>
+          (studentProfile.id && s.id === studentProfile.id) ||
+          (s.name && s.name.trim().toLowerCase() === studentProfile.name.trim().toLowerCase())
+        );
+        if (!alreadyInList) {
+          sourceList = [currentStudentRecord, ...sourceList];
+        } else {
+          sourceList = sourceList.map(s => {
+            if ((studentProfile.id && s.id === studentProfile.id) ||
+                (s.name && s.name.trim().toLowerCase() === studentProfile.name.trim().toLowerCase())) {
+              return currentStudentRecord;
+            }
+            return s;
+          });
+        }
       }
-      if (sortBy === 'score_desc') {
+  
+      const list = sourceList.filter(student => {
+        const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (student.school && student.school.toLowerCase().includes(searchQuery.toLowerCase()));
+        
+        const isCompleted = Boolean(student.completedAt) || (student.completedStages && student.completedStages.length === 6);
+        
+        if (statusFilter === 'completed') return matchesSearch && isCompleted;
+        if (statusFilter === 'in_progress') return matchesSearch && !isCompleted;
+        return matchesSearch;
+      });
+  
+      const isCurrentStudent = (s) => {
+        if (!studentProfile?.name) return false;
+        if (studentProfile.id && s.id === studentProfile.id) return true;
+        return Boolean(s.name && s.name.trim().toLowerCase() === studentProfile.name.trim().toLowerCase());
+      };
+  
+      return [...list].sort((a, b) => {
+        // إذا كان الفرز حسب الإنجاز أو الدرجات، لا نثبت المستخدم في المركز الأول قسراً لكي يكون الترتيب منطقياً وعادلاً،
+        // ولكن إن كانت خيارات أخرى أو عند رغبة التصفح، يتم تمييزه بلون واضح.
+        if (sortBy === 'completed') {
+          const compA = (a.completedStages || []).length;
+          const compB = (b.completedStages || []).length;
+          if (compB !== compA) return compB - compA;
+          return compareStudentsByScore(a, b);
+        }
+        if (sortBy === 'score_desc') {
+          return compareStudentsByScore(a, b);
+        }
+        if (sortBy === 'newest') {
+          const dateA = new Date(a.registeredAt || 0).getTime();
+          const dateB = new Date(b.registeredAt || 0).getTime();
+          return dateB - dateA;
+        }
+        if (sortBy === 'name') {
+          return (a.name || '').localeCompare(b.name || '', 'ar');
+        }
+        const compA = (a.completedStages || []).length;
+        const compB = (b.completedStages || []).length;
+        if (compB !== compA) return compB - compA;
         return compareStudentsByScore(a, b);
-      }
-      if (sortBy === 'newest') {
-        const dateA = new Date(a.registeredAt || 0).getTime();
-        const dateB = new Date(b.registeredAt || 0).getTime();
-        return dateB - dateA;
-      }
-      if (sortBy === 'name') {
-        return (a.name || '').localeCompare(b.name || '', 'ar');
-      }
-      const compA = (a.completedStages || []).length;
-      const compB = (b.completedStages || []).length;
-      if (compB !== compA) return compB - compA;
-      return compareStudentsByScore(a, b);
-    });
-  }, [analytics.studentsList, searchQuery, statusFilter, sortBy, studentProfile, currentStudentRecord]);
+      });
+    }, [analytics.studentsList, searchQuery, statusFilter, sortBy, studentProfile, currentStudentRecord]);
 
   // Reset pagination when filter or search changes
   useEffect(() => {
@@ -168,16 +209,6 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
   const displayedStudents = useMemo(() => {
     return filteredStudents.slice(0, displayLimit);
   }, [filteredStudents, displayLimit]);
-
-  // التحقق إن كان الطالب الحالي هو الأول في القائمة المعروضة
-  const hasCurrentUserAtTop = useMemo(() => {
-    if (!studentProfile?.name || displayedStudents.length === 0) return false;
-    const first = displayedStudents[0];
-    return Boolean(
-      (studentProfile.id && first.id === studentProfile.id) ||
-      (first.name && first.name.trim().toLowerCase() === studentProfile.name.trim().toLowerCase())
-    );
-  }, [studentProfile, displayedStudents]);
 
   if (!isOpen) return null;
 
@@ -459,7 +490,7 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
                   <span>عرض {displayedStudents.length} من أصل {filteredStudents.length} طالباً (إجمالي المسجلين: {analytics.totalStudents})</span>
                   {studentProfile?.name && (
                     <span className="text-[#39A9D0] bg-[#39A9D0]/10 px-2 py-0.5 rounded-full border border-[#39A9D0]/20 text-[10px] font-bold">
-                      📌 حسابك مثبت في مقدمة القائمة تلقائياً
+                      ⭐ حسابك مميز بإشارة زرقاء (ترتيبك العام: #{masterRankMap.get(studentProfile.id || studentProfile.name) || '-'})
                     </span>
                   )}
                 </div>
@@ -512,25 +543,55 @@ export default function GeneralAnalyticsModal({ isOpen, onClose, theme = 'dark',
                             >
                               {/* الترتيب والميداليات للثلاثة الأوائل */}
                               <td className="p-3 text-center font-math font-black text-xs">
-                                {isCurrent ? (
-                                  <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-lg bg-[#39A9D0]/20 text-[#39A9D0] border border-[#39A9D0]/40 text-[11px] font-black" title="حسابك (مثبت في أول السجل تلقائياً)">
-                                    ⭐ أنت
-                                  </span>
-                                ) : hasCurrentUserAtTop ? (
-                                  <>
-                                    {index === 1 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400/20 text-amber-500 border border-amber-400/40 text-sm" title="المركز الأول بين الطلاب 🥇">🥇</span>}
-                                    {index === 2 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-300/20 text-slate-400 border border-slate-300/40 text-sm" title="المركز الثاني بين الطلاب 🥈">🥈</span>}
-                                    {index === 3 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-700/20 text-amber-600 border border-amber-600/40 text-sm" title="المركز الثالث بين الطلاب 🥉">🥉</span>}
-                                    {index > 3 && <span className="text-slate-400 dark:text-slate-500 font-bold">{index}</span>}
-                                  </>
-                                ) : (
-                                  <>
-                                    {index === 0 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400/20 text-amber-500 border border-amber-400/40 text-sm" title="المركز الأول 🥇">🥇</span>}
-                                    {index === 1 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-300/20 text-slate-400 border border-slate-300/40 text-sm" title="المركز الثاني 🥈">🥈</span>}
-                                    {index === 2 && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-700/20 text-amber-600 border border-amber-600/40 text-sm" title="المركز الثالث 🥉">🥉</span>}
-                                    {index > 2 && <span className="text-slate-400 dark:text-slate-500 font-bold">{index + 1}</span>}
-                                  </>
-                                )}
+                                {(() => {
+                                  // الترتيب العام الحقيقي للطالب على المنصة
+                                  const globalRank = masterRankMap.get(student.id || student.name);
+                                  const isRankSorted = sortBy === 'completed' || sortBy === 'score_desc';
+
+                                  // إذا كان الفرز بحسب التفوق والإنجاز، والمستخدم يقع في المراكز الثلاثة الأولى
+                                  if (isRankSorted) {
+                                    if (index === 0) {
+                                      return (
+                                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-400/20 text-amber-500 border border-amber-400/40 text-sm shadow-sm" title={`المركز الأول 🥇 (الترتيب العام: #${globalRank})`}>
+                                          🥇
+                                        </span>
+                                      );
+                                    }
+                                    if (index === 1) {
+                                      return (
+                                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-300/20 text-slate-400 border border-slate-300/40 text-sm shadow-sm" title={`المركز الثاني 🥈 (الترتيب العام: #${globalRank})`}>
+                                          🥈
+                                        </span>
+                                      );
+                                    }
+                                    if (index === 2) {
+                                      return (
+                                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-700/20 text-amber-600 border border-amber-600/40 text-sm shadow-sm" title={`المركز الثالث 🥉 (الترتيب العام: #${globalRank})`}>
+                                          🥉
+                                        </span>
+                                      );
+                                    }
+                                    return (
+                                      <span className="text-slate-400 dark:text-slate-500 font-bold" title={`الترتيب في القائمة: ${index + 1} (الترتيب العام: #${globalRank})`}>
+                                        {index + 1}
+                                      </span>
+                                    );
+                                  }
+
+                                  // في حالات الفرز الأخرى (أبجدياً، الأحدث تسجيلاً)، نظهر رقم تسلسل الصف وبجانبه الترتيب العام إن أردنا أو التسلسل فقط
+                                  return (
+                                    <div className="flex flex-col items-center justify-center">
+                                      <span className="text-slate-500 dark:text-slate-400 font-bold">
+                                        {index + 1}
+                                      </span>
+                                      {globalRank <= 3 && (
+                                        <span className="text-[10px]" title={`من أوائل المنصة عامة (#${globalRank})`}>
+                                          {globalRank === 1 ? '🥇' : globalRank === 2 ? '🥈' : '🥉'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </td>
 
                               {/* Student name & avatar */}
